@@ -1,5 +1,5 @@
-FROM node:18-buster AS build
+FROM node:24
 
 WORKDIR /app
 
-CMD ["/bin/bash", "-c", "yarn install; yarn dev"]
+CMD ["sh", "-c", "npm install && npm run dev"]

@@ -1,7 +1,21 @@
-<template>
-  <router-view />
-</template>
+<script setup lang="ts">
+import { watch } from 'vue'
+import { RouterView, useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
-<script setup>
-  //
+const router = useRouter()
+const userStore = useUserStore()
+
+watch(
+  () => userStore.token,
+  (token) => {
+    if (!token) {
+      router.push({ name: 'login' })
+    }
+  },
+)
 </script>
+
+<template>
+  <RouterView />
+</template>
