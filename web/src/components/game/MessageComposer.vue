@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { MessageMetadata, Mood } from "@/types/api";
-import { MOODS } from "@/message-style/moods";
-import { createTypingTracker } from "@/message-style/typingSpeed";
+import { MOODS } from "@/core/message-style/moods";
+import { createTypingTracker } from "@/core/message-style/typingSpeed";
 
 const emit = defineEmits<{
   submit: [text: string, metadata: MessageMetadata];

@@ -4,10 +4,10 @@ import { RouterLink, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { getMessages } from "@/api/messages";
 import type { Message } from "@/types/api";
-import BaseLayout from "@/views/layouts/BaseLayout.vue";
+import BaseLayout from "@/layouts/BaseLayout.vue";
 import GameView from "@/components/game/GameView.vue";
 import ConversationPanel from "@/components/ConversationPanel.vue";
-import { markSeen } from "@/utils/lastSeen";
+import { markSeen } from "@/core/utils/lastSeen";
 
 const route = useRoute();
 const userStore = useUserStore();

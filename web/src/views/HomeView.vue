@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useUserStore } from "@/stores/user";
 import { getMessages } from "@/api/messages";
 import type { Message } from "@/types/api";
-import BaseLayout from "@/views/layouts/BaseLayout.vue";
+import BaseLayout from "@/layouts/BaseLayout.vue";
 import ChannelItem from "@/components/ChannelItem.vue";
 import NewChannelSheet from "@/components/NewChannelSheet.vue";
 

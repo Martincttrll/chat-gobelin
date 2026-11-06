@@ -1,6 +1,9 @@
 import type { Mood, MessageMetadata } from '@/types/api'
-import { MOODS } from '@/message-style/moods'
+import { MOODS } from '@/core/message-style/moods'
 import type { Point } from './physics'
+
+export const DUMMY_SPEED = 120 // px/s
+export const DUMMY_TENSION = 0.8
 
 const DUMMY_TEXTS = [
   'tu as fait le devoir de maths ?',

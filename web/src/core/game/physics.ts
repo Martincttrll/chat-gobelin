@@ -1,5 +1,5 @@
 import type { MessageMetadata } from '@/types/api'
-import { clamp01, typingIntensity } from '@/message-style/messageStyle'
+import { clamp01, typingIntensity } from '@/core/message-style/messageStyle'
 
 // Positions en coordonnées relatives (0 → 1 sur chaque axe de l'écran),
 // vitesses et distances en pixels pour que la physique soit la même sur les deux axes.
@@ -37,6 +37,7 @@ const MIN_BALL_RADIUS = 8 // px, message d'un caractère
 const MAX_BALL_RADIUS = 20 // px
 const LONG_MESSAGE = 100 // caractères : au-delà, la boule ne grossit plus
 export const MAX_PULL = 120 // px, tension max de la fronde
+export const MIN_TENSION = 0.15 // en dessous, le lâcher de la fronde est ignoré
 export const PLAYER_SPEED = 220 // px/s
 const MIN_LAUNCH_SPEED = 400 // px/s, frappe lente et tension max
 const MAX_LAUNCH_SPEED = 1400 // px/s, frappe rapide et tension max
@@ -84,6 +85,20 @@ export function launchVelocity(direction: Point, tension: number, typingSpeed: n
   return {
     vx: (direction.x / length) * speed,
     vy: (direction.y / length) * speed,
+  }
+}
+
+// Fronde : la boule est tirée dans le sens du drag (plafonné à MAX_PULL), et part dans le sens opposé.
+export function slingshotPull(start: Point, current: Point) {
+  const dx = current.x - start.x
+  const dy = current.y - start.y
+  const length = Math.hypot(dx, dy)
+  const clamped = Math.min(length, MAX_PULL)
+  const ratio = length > 0 ? clamped / length : 0
+
+  return {
+    offset: { x: dx * ratio, y: dy * ratio },
+    tension: clamped / MAX_PULL,
   }
 }
 

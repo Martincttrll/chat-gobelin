@@ -2,8 +2,8 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import gsap from "gsap";
 import type { Message, MessageMetadata } from "@/types/api";
-import { MOODS } from "@/message-style/moods";
-import { getLetterStyle, getMessageStyle, pauseToGap } from "@/message-style/messageStyle";
+import { MOODS } from "@/core/message-style/moods";
+import { getLetterStyle, getMessageStyle, pauseToGap } from "@/core/message-style/messageStyle";
 
 const props = defineProps<{ message: Message }>();
 

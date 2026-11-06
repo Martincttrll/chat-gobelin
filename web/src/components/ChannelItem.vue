@@ -3,8 +3,8 @@ import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import type { Channel, Message } from "@/types/api";
 import { useUserStore } from "@/stores/user";
-import { moodColor } from "@/message-style/moods";
-import { getLastSeen } from "@/utils/lastSeen";
+import { moodColor } from "@/core/message-style/moods";
+import { getLastSeen } from "@/core/utils/lastSeen";
 
 const props = defineProps<{ channel: Channel; messages: Message[] }>();
 
