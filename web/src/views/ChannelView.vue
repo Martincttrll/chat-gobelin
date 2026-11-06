@@ -1,26 +1,94 @@
-<script>
-import { ref } from "vue";
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { RouterLink, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
-import { useRoute } from "vue-router";
-import { useChannelStore } from "@/stores/channel";
+import { getMessages } from "@/api/messages";
+import type { Message } from "@/types/api";
+import BaseLayout from "@/views/layouts/BaseLayout.vue";
+import GameView from "@/components/game/GameView.vue";
+import ConversationPanel from "@/components/ConversationPanel.vue";
+import { markSeen } from "@/utils/lastSeen";
+
+const route = useRoute();
+const userStore = useUserStore();
+
+const conversationOpen = ref(false);
+const messages = ref<Message[]>([]);
+
+const channel = computed(() =>
+  userStore.me?.channels.find((c) => c.name === route.params.name),
+);
+
+async function loadMessages() {
+  if (!channel.value) return;
+  messages.value = await getMessages(channel.value.id);
+}
+
+// /me est chargé de façon asynchrone au démarrage : le channel peut arriver après le montage.
+watch(
+  () => channel.value?.id,
+  (id) => {
+    if (!id) return;
+    markSeen(id);
+    loadMessages();
+  },
+  { immediate: true },
+);
+
+// Pas encore de WebSocket côté API : on recharge les messages toutes les 3 s.
+let timer: number;
+onMounted(() => {
+  timer = setInterval(loadMessages, 3000);
+});
+onUnmounted(() => {
+  clearInterval(timer);
+  if (channel.value) markSeen(channel.value.id);
+});
 </script>
 
 <template>
-  <main>
-    <header>
-      <p>
-        Connecté en tant que <strong>{{ userStore.me?.username }}</strong>
-      </p>
-      <button @click="userStore.logout()">Se déconnecter</button>
-    </header>
+  <template v-if="channel">
+    <GameView :channel-id="channel.id" />
 
-    <h2>Channel: {{ channelStore.currentChannel?.name }}</h2>
-    <ul>
-      <li
-        v-for="message in channelStore.currentChannel?.messages"
-        :key="message.id">
-        <strong>{{ message.user.username }}:</strong> {{ message.content }}
-      </li>
-    </ul>
-  </main>
+    <nav class="topbar">
+      <RouterLink :to="{ name: 'home' }">←</RouterLink>
+      <button @click="conversationOpen = true">Discussion</button>
+    </nav>
+
+    <!-- :duration car les transitions sont sur les enfants (fond, panneau), pas sur la racine. -->
+    <Transition name="conversation" :duration="{ enter: 300, leave: 200 }">
+      <ConversationPanel
+        v-if="conversationOpen"
+        :messages="messages"
+        @close="conversationOpen = false" />
+    </Transition>
+  </template>
+
+  <BaseLayout v-else>
+    <p v-if="!userStore.me">Chargement…</p>
+    <p v-else>Tu ne fais pas partie de ce channel.</p>
+  </BaseLayout>
 </template>
+
+<style scoped>
+.topbar {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.topbar > * {
+  pointer-events: auto;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--text-color);
+  border-radius: 2rem;
+  background: var(--background-color);
+  color: var(--text-color);
+  text-decoration: none;
+}
+</style>

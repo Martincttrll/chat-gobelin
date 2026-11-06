@@ -17,11 +17,20 @@ export interface Me extends User {
   channels: Channel[]
 }
 
+export type Mood = 'neutral' | 'anger' | 'joy' | 'sadness' | 'stress' | 'surprise'
+
+export interface MessageMetadata {
+  mood: Mood
+  typingSpeed: number
+  pauses: number[]
+}
+
 export interface Message {
   content: string
   user_id: number
   user: string
   creation_date: string
+  metadata?: MessageMetadata
 }
 
 // GET /channel/message renvoie null (et pas []) quand le channel est vide.

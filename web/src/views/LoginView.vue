@@ -35,7 +35,7 @@ async function submit(mode: 'login' | 'signup') {
 
 <template>
   <main class="login">
-    <h1>Chat Gobelin</h1>
+    <h1>Type Swap</h1>
 
     <form @submit.prevent="submit('login')">
       <label>
@@ -75,6 +75,6 @@ label {
 }
 
 .error {
-  color: crimson;
+  color: var(--red);
 }
 </style>

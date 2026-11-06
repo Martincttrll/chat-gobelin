@@ -1,3 +1,68 @@
+@font-face {
+  font-family: "Acorn";
+  src: url("./fonts/Acorn Trials/TrialAcorn-Thin.otf") format("opentype");
+  font-weight: 100;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Acorn";
+  src: url("./fonts/Acorn Trials/TrialAcorn-ExtraLight.otf") format("opentype");
+  font-weight: 200;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Acorn";
+  src: url("./fonts/Acorn Trials/TrialAcorn-Light.otf") format("opentype");
+  font-weight: 300;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Acorn";
+  src: url("./fonts/Acorn Trials/TrialAcorn-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Acorn";
+  src: url("./fonts/Acorn Trials/TrialAcorn-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Acorn";
+  src: url("./fonts/Acorn Trials/TrialAcorn-SemiBold.otf") format("opentype");
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Acorn";
+  src: url("./fonts/Acorn Trials/TrialAcorn-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --primary-color: #ff6bba;
+  --pink: #ff6bba;
+  --pink-secondary: #d01790;
+  --yellow: #fcff57;
+  --yellow-secondary: #ffab3e;
+  --blue: #75dff4;
+  --blue-secondary: #ece5e7;
+  --red: #ff1d1d;
+  --red-secondary: #5e2c2c;
+  --purple: #dc25ff;
+  --purple-secondary: #5a1c95;
+  --text-color: #fff;
+  --background-color: #19171f;
+}
+
 *,
 *::before,
 *::after {
@@ -6,7 +71,9 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: "Acorn", system-ui, sans-serif;
   line-height: 1.5;
 }
 
@@ -17,7 +84,15 @@ body {
 }
 
 input,
-button {
+button,
+select {
   font: inherit;
   padding: 0.5rem;
+  border: 1px solid var(--text-color);
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+a {
+  color: inherit;
 }

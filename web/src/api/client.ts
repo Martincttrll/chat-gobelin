@@ -1,6 +1,7 @@
 import { useUserStore } from '@/stores/user'
 
-export const API_URL = 'http://localhost:4000'
+// Même hôte que la page : permet de tester depuis un téléphone sur le réseau local.
+export const API_URL = `http://${window.location.hostname}:4000`
 
 export async function request<T>(method: string, path: string, body?: object): Promise<T> {
   const userStore = useUserStore()
