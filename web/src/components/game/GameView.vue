@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  reactive,
+  ref,
+  watch,
+} from "vue";
 import gsap from "gsap";
 import { useUserStore } from "@/stores/user";
 import { sendMessage } from "@/api/messages";
@@ -14,9 +22,16 @@ import {
   type Point,
   type Size,
 } from "@/core/game/physics";
-import { createWorld, dummyThrow, stepWorld, throwBall, type Catch } from "@/core/game/world";
+import {
+  createWorld,
+  dummyThrow,
+  stepWorld,
+  throwBall,
+  type Catch,
+} from "@/core/game/world";
 import GameHud from "@/components/game/GameHud.vue";
 import ReceivedMessage from "@/components/game/ReceivedMessage.vue";
+import TrailScene from "@/core/trail/TrailScene";
 
 const props = defineProps<{ channelId: number }>();
 const userStore = useUserStore();
@@ -27,6 +42,7 @@ const world = reactive(createWorld(userStore.me?.username ?? "Moi"));
 const { me } = world;
 
 const svg = ref<SVGSVGElement>();
+const trailCanvas = ref<HTMLCanvasElement>();
 const pendingBallEl = ref<SVGCircleElement>();
 
 const size = ref<Size>({ width: 1, height: 1 });
@@ -39,6 +55,8 @@ const received = ref<Message | null>(null);
 const toast = ref("");
 
 let toastTimer: number | undefined;
+// Pas de ref() : Vue envelopperait les objets Three dans des proxys réactifs.
+let trailScene: TrailScene | undefined;
 
 function toPx(point: Point): Point {
   return { x: point.x * size.value.width, y: point.y * size.value.height };
@@ -103,7 +121,9 @@ function onCatch({ ball, catcher, thrower }: Catch) {
       metadata: ball.metadata,
     };
   } else {
-    showToast(`${catcher.name} a attrapé ${ball.throwerId === me.id ? "ton" : "un"} message`);
+    showToast(
+      `${catcher.name} a attrapé ${ball.throwerId === me.id ? "ton" : "un"} message`,
+    );
   }
 }
 
@@ -151,6 +171,7 @@ function tick(_time: number, deltaMs: number) {
   // Plafonné : après un changement d'onglet du navigateur, deltaMs peut valoir plusieurs secondes.
   const dt = Math.min(deltaMs / 1000, 0.05);
   stepWorld(world, dt, size.value).forEach(onCatch);
+  trailScene?.update();
 }
 
 // Animation provisoire, remplacée en phase 2 par la séquence papier (froissage).
@@ -173,20 +194,27 @@ onMounted(() => {
       width: entry!.contentRect.width,
       height: entry!.contentRect.height,
     };
+    trailScene?.resize(size.value);
   });
   resizeObserver.observe(svg.value!);
   gsap.ticker.add(tick);
+
+  trailScene = new TrailScene(trailCanvas.value!);
+  trailScene.init();
 });
 
 onUnmounted(() => {
   resizeObserver.disconnect();
   gsap.ticker.remove(tick);
   clearTimeout(toastTimer);
+  trailScene?.dispose();
 });
 </script>
 
 <template>
   <div class="game">
+    <canvas ref="trailCanvas" class="trail" />
+
     <svg
       ref="svg"
       class="map"
@@ -261,7 +289,10 @@ onUnmounted(() => {
 
     <p v-if="toast" class="toast">{{ toast }}</p>
 
-    <ReceivedMessage v-if="received" :message="received" @close="received = null" />
+    <ReceivedMessage
+      v-if="received"
+      :message="received"
+      @close="received = null" />
   </div>
 </template>
 
@@ -278,7 +309,17 @@ onUnmounted(() => {
   background: var(--background-color);
 }
 
+.trail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* relative : sinon le canvas (absolute) est peint par-dessus le SVG. */
 .map {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;

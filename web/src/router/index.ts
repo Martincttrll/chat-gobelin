@@ -10,6 +10,16 @@ const router = createRouter({
     { path: "/", name: "home", component: HomeView },
     { path: "/login", name: "login", component: LoginView },
     { path: "/channel/:name", name: "channel", component: ChannelView },
+    // Outil de dev pour régler le shader de la traînée, absent de la build.
+    ...(import.meta.env.DEV
+      ? [
+          {
+            path: "/debug/trail",
+            name: "debug-trail",
+            component: () => import("@/views/debug/TrailDebugView.vue"),
+          },
+        ]
+      : []),
   ],
 });
 
