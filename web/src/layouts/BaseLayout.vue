@@ -20,7 +20,7 @@ const menuOpen = ref(false);
         <div class="menu-backdrop" @click="menuOpen = false" />
         <div class="menu">
           <p>{{ userStore.me?.username }}</p>
-          <button @click="userStore.logout()">Se déconnecter</button>
+          <button class="plain" @click="userStore.logout()">Se déconnecter</button>
         </div>
       </template>
     </div>
@@ -84,7 +84,7 @@ header {
 
 .menu button {
   width: 100%;
-  border: none;
+  padding: 0.5rem;
   border-radius: 0.5rem;
   text-align: left;
   color: var(--red);

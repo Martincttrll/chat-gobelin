@@ -1,26 +1,28 @@
-import { request } from './client'
-import type { CreateMessagePayload, Message, MessageList, MessageMetadata } from '@/types/api'
+import { NAMESPACE, request } from './client'
+import type {
+  ApiMessage,
+  ApiMessageList,
+  CreateMessagePayload,
+  EditMessagePayload,
+  Message,
+  MessageMetadata,
+} from '@/types/api'
 
-// En attendant le champ metadata côté back, les métadonnées voyagent en JSON dans content.
-function encodeContent(text: string, metadata: MessageMetadata): string {
-  return JSON.stringify({ text, metadata })
+function toMessage({ metadata, ...message }: ApiMessage): Message {
+  // Messages d'autres clients ou du back (horloge) : pas de metadata dans notre namespace.
+  const ours = metadata?.[NAMESPACE] as MessageMetadata | undefined
+  return { ...message, metadata: ours }
 }
 
-function decodeMessage(message: Message): Message {
-  try {
-    const parsed = JSON.parse(message.content)
-    if (typeof parsed?.text === 'string') {
-      return { ...message, content: parsed.text, metadata: parsed.metadata }
-    }
-  } catch {
-    // Message en texte brut (ancien message, ou envoyé par un autre client).
-  }
-  return message
+// L'API renvoie les 100 derniers messages du plus récent au plus ancien : on remet l'ordre chronologique.
+// L'id départage les messages qui ont le même posted_at.
+function chronological(a: ApiMessage, b: ApiMessage): number {
+  return Date.parse(a.posted_at) - Date.parse(b.posted_at) || a.id - b.id
 }
 
 export async function getMessages(channelId: number): Promise<Message[]> {
-  const messages = await request<MessageList>('GET', `/channel/message?channel=${channelId}`)
-  return (messages ?? []).map(decodeMessage)
+  const messages = await request<ApiMessageList>('GET', `/channel/message?channel=${channelId}`)
+  return (messages ?? []).sort(chronological).map(toMessage)
 }
 
 export async function sendMessage(
@@ -28,7 +30,15 @@ export async function sendMessage(
   text: string,
   metadata: MessageMetadata,
 ): Promise<Message> {
-  const body: CreateMessagePayload = { content: encodeContent(text, metadata), channel: channelId }
-  const message = await request<Message>('POST', '/channel/message', body)
-  return decodeMessage(message)
+  const body: CreateMessagePayload = { content: text, channel: channelId, metadata }
+  return toMessage(await request<ApiMessage>('POST', '/channel/message', body))
+}
+
+export async function editMessage(
+  id: number,
+  text: string,
+  metadata?: MessageMetadata,
+): Promise<Message> {
+  const body: EditMessagePayload = { id, content: text, metadata }
+  return toMessage(await request<ApiMessage>('PUT', '/channel/message', body))
 }

@@ -38,11 +38,13 @@ async function submit(action: "create" | "join") {
 
     <form class="sheet" @submit.prevent="submit('join')">
       <h2>Nouveau channel</h2>
-      <input v-model="channelName" placeholder="Nom du channel" required />
+      <span class="field">
+        <input v-model="channelName" placeholder="Nom du channel" required />
+      </span>
       <p v-if="error" class="error">{{ error }}</p>
 
       <div class="actions">
-        <button type="submit">Rejoindre</button>
+        <button type="submit" class="filled">Rejoindre</button>
         <button type="button" :disabled="!channelName.trim()" @click="submit('create')">
           Créer
         </button>

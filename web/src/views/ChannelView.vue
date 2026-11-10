@@ -51,8 +51,11 @@ onUnmounted(() => {
     <GameView :channel-id="channel.id" />
 
     <nav class="topbar">
-      <RouterLink :to="{ name: 'home' }">←</RouterLink>
-      <button @click="conversationOpen = true">Discussion</button>
+      <RouterLink class="sketch" :to="{ name: 'home' }">←</RouterLink>
+      <img
+        @click="conversationOpen = true"
+        src="@/assets/img/chat.svg"
+        alt="Ouvrir la discussion" />
     </nav>
 
     <!-- :duration car les transitions sont sur les enfants (fond, panneau), pas sur la racine. -->
@@ -85,10 +88,7 @@ onUnmounted(() => {
 .topbar > * {
   pointer-events: auto;
   padding: 0.4rem 0.9rem;
-  border: 1px solid var(--text-color);
-  border-radius: 2rem;
-  background: var(--background-color);
-  color: var(--text-color);
+  --sketch-background: var(--background-color);
   text-decoration: none;
 }
 </style>

@@ -1,9 +1,9 @@
-import { API_URL, request } from './client'
+import { apiUrl, request } from './client'
 import type { Credentials, Me, User } from '@/types/api'
 
 // /login renvoie le token en texte brut : on ne passe pas par request(), qui parse du JSON.
 export async function login(credentials: Credentials): Promise<string> {
-  const response = await fetch(`${API_URL}/login`, {
+  const response = await fetch(apiUrl('/login'), {
     method: 'POST',
     body: JSON.stringify(credentials),
   })
@@ -21,4 +21,9 @@ export function createUser(credentials: Credentials): Promise<User> {
 
 export function getCurrentUser(): Promise<Me> {
   return request<Me>('GET', '/me')
+}
+
+// Remplace les metadata de l'utilisateur courant dans notre namespace.
+export function editMyMetadata(metadata: object): Promise<User> {
+  return request<User>('POST', '/user/edit', { metadata })
 }

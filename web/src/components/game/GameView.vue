@@ -14,10 +14,12 @@ import { sendMessage } from "@/api/messages";
 import type { Message, MessageMetadata } from "@/types/api";
 import { moodColor } from "@/core/message-style/moods";
 import {
+  MAX_PULL,
   MIN_TENSION,
   PLAYER_RADIUS,
   ballRadius,
   clampToMap,
+  pushPlayer,
   slingshotPull,
   type Point,
   type Size,
@@ -31,12 +33,16 @@ import {
 } from "@/core/game/world";
 import GameHud from "@/components/game/GameHud.vue";
 import ReceivedMessage from "@/components/game/ReceivedMessage.vue";
+import Joystick from "@/components/game/Joystick.vue";
+import { stickTilt } from "@/core/game/joystick";
 import TrailScene from "@/core/trail/TrailScene";
 
 const props = defineProps<{ channelId: number }>();
 const userStore = useUserStore();
 
 type Phase = "move" | "aim";
+// Deux schémas de contrôle à comparer (tests avec les créas).
+type Controls = "drag" | "joystick";
 
 const world = reactive(createWorld(userStore.me?.username ?? "Moi"));
 const { me } = world;
@@ -50,7 +56,12 @@ const phase = ref<Phase>("move");
 const pending = ref<{ text: string; metadata: MessageMetadata } | null>(null);
 const aim = ref<{ start: Point; current: Point } | null>(null);
 const followingFinger = ref(false);
-const touching = computed(() => followingFinger.value || aim.value !== null);
+const controls = ref<Controls>("joystick");
+// Joystick flottant : il apparaît là où le doigt se pose (origin).
+const stick = ref<{ origin: Point; tilt: Point } | null>(null);
+const touching = computed(
+  () => followingFinger.value || aim.value !== null || stick.value !== null,
+);
 const received = ref<Message | null>(null);
 const toast = ref("");
 
@@ -113,11 +124,15 @@ function launch() {
 
 function onCatch({ ball, catcher, thrower }: Catch) {
   if (catcher.id === me.id) {
+    const now = new Date().toISOString();
     received.value = {
+      id: ball.id,
       content: ball.text,
       user: thrower?.name ?? "?",
       user_id: 0,
-      creation_date: new Date().toISOString(),
+      anonymous: false,
+      creation_date: now,
+      posted_at: now,
       metadata: ball.metadata,
     };
   } else {
@@ -141,35 +156,61 @@ function stopFollowing() {
   me.target = null;
 }
 
+// En visée, le joystick réutilise la fronde : l'inclinaison du stick remplace le drag sur l'écran.
+function moveStick(point: Point) {
+  const tilt = stickTilt(stick.value!.origin, point);
+  stick.value!.tilt = tilt;
+  if (phase.value === "aim") {
+    aim.value = {
+      start: { x: 0, y: 0 },
+      current: { x: tilt.x * MAX_PULL, y: tilt.y * MAX_PULL },
+    };
+  }
+}
+
 function onPointerDown(event: PointerEvent) {
-  if (phase.value === "move") {
+  const point = pointerPx(event);
+  if (controls.value === "joystick") {
+    stick.value = { origin: point, tilt: { x: 0, y: 0 } };
+    moveStick(point);
+  } else if (phase.value === "move") {
     followingFinger.value = true;
     followFinger(event);
   } else {
-    const point = pointerPx(event);
     aim.value = { start: point, current: point };
   }
   svg.value!.setPointerCapture(event.pointerId);
 }
 
 function onPointerMove(event: PointerEvent) {
+  if (stick.value) moveStick(pointerPx(event));
   if (followingFinger.value) followFinger(event);
-  if (aim.value) aim.value.current = pointerPx(event);
+  if (aim.value && !stick.value) aim.value.current = pointerPx(event);
 }
 
 function onPointerUp() {
+  stick.value = null;
   if (followingFinger.value) stopFollowing();
   if (aim.value) launch();
 }
 
 function onPointerCancel() {
+  stick.value = null;
   if (followingFinger.value) stopFollowing();
   aim.value = null;
+}
+
+function toggleControls() {
+  onPointerCancel();
+  controls.value = controls.value === "drag" ? "joystick" : "drag";
 }
 
 function tick(_time: number, deltaMs: number) {
   // Plafonné : après un changement d'onglet du navigateur, deltaMs peut valoir plusieurs secondes.
   const dt = Math.min(deltaMs / 1000, 0.05);
+  if (stick.value && phase.value === "move") {
+    pushPlayer(me, stick.value.tilt, dt, size.value);
+  }
   stepWorld(world, dt, size.value).forEach(onCatch);
   trailScene?.update();
 }
@@ -212,7 +253,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="game">
+  <div class="game grid-background">
     <canvas ref="trailCanvas" class="trail" />
 
     <svg
@@ -285,7 +326,14 @@ onUnmounted(() => {
       @submit="onComposerSubmit"
       @cancel="cancelMessage" />
 
-    <button class="debug" @click="dummyThrow(world, size)">Dummy → moi</button>
+    <Joystick v-if="stick" :origin="stick.origin" :tilt="stick.tilt" />
+
+    <div class="debug">
+      <button @click="toggleControls">
+        Contrôles : {{ controls === "drag" ? "Drag" : "Joystick" }}
+      </button>
+      <button @click="dummyThrow(world, size)">Dummy → moi</button>
+    </div>
 
     <p v-if="toast" class="toast">{{ toast }}</p>
 
@@ -306,7 +354,6 @@ onUnmounted(() => {
   overscroll-behavior: none;
   user-select: none;
   -webkit-user-select: none;
-  background: var(--background-color);
 }
 
 .trail {
@@ -317,7 +364,6 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* relative : sinon le canvas (absolute) est peint par-dessus le SVG. */
 .map {
   position: relative;
   display: block;
@@ -368,8 +414,12 @@ onUnmounted(() => {
 
 .debug {
   position: absolute;
+  top: 3.75rem;
   right: 0.75rem;
-  bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
   opacity: 0.6;
 }
 

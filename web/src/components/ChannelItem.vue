@@ -55,7 +55,7 @@ const lastTime = computed(() => {
         <div v-if="dots.length" class="unread">
           <span
             v-for="message in dots"
-            :key="message.creation_date"
+            :key="message.id"
             class="dot"
             :style="{ backgroundColor: moodColor(message.metadata) }"
           />

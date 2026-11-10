@@ -2,7 +2,7 @@ import { request } from './client'
 import type { Channel, CreateChannelPayload, EnterChannelPayload } from '@/types/api'
 
 export function createChannel(name: string): Promise<Channel> {
-  const body: CreateChannelPayload = { name }
+  const body: CreateChannelPayload = { name, metadata: {} }
   return request<Channel>('POST', '/channel', body)
 }
 

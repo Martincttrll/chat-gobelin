@@ -1,51 +1,4 @@
-@font-face {
-  font-family: "Acorn";
-  src: url("./fonts/Acorn Trials/TrialAcorn-Thin.otf") format("opentype");
-  font-weight: 100;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Acorn";
-  src: url("./fonts/Acorn Trials/TrialAcorn-ExtraLight.otf") format("opentype");
-  font-weight: 200;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Acorn";
-  src: url("./fonts/Acorn Trials/TrialAcorn-Light.otf") format("opentype");
-  font-weight: 300;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Acorn";
-  src: url("./fonts/Acorn Trials/TrialAcorn-Regular.otf") format("opentype");
-  font-weight: 400;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Acorn";
-  src: url("./fonts/Acorn Trials/TrialAcorn-Medium.otf") format("opentype");
-  font-weight: 500;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Acorn";
-  src: url("./fonts/Acorn Trials/TrialAcorn-SemiBold.otf") format("opentype");
-  font-weight: 600;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Acorn";
-  src: url("./fonts/Acorn Trials/TrialAcorn-Bold.otf") format("opentype");
-  font-weight: 700;
-  font-display: swap;
-}
+@import "fonts.css";
 
 :root {
   --primary-color: #ff6bba;
@@ -78,21 +31,98 @@ body {
 }
 
 #app {
-  max-width: 960px;
   margin: 0 auto;
   padding: 1rem;
+  width: 100dvw;
+  height: 100dvh;
+  position: relative;
 }
 
 input,
 button,
 select {
   font: inherit;
-  padding: 0.5rem;
-  border: 1px solid var(--text-color);
-  background-color: var(--background-color);
   color: var(--text-color);
+}
+
+option {
+  background-color: var(--background-color);
 }
 
 a {
   color: inherit;
+}
+
+/* Contour crayonné (filtre #sketch dans App.vue) : le fond et la bordure sont sur un ::before
+   filtré, pour que le texte reste net. Les input/select n'ont pas de ::before : on les
+   enveloppe dans un <span class="field">. */
+.sketch,
+.field,
+button:not(.plain) {
+  position: relative;
+  isolation: isolate;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  /* color: var(--text-color); */
+}
+
+.sketch::before,
+.field::before,
+button:not(.plain)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1.5px solid var(--sketch-border, currentColor);
+  border-radius: inherit;
+  background: var(--sketch-background, transparent);
+  filter: url(#sketch);
+}
+
+button {
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.filled {
+  --sketch-background: var(--text-color);
+  --sketch-border: var(--text-color);
+  color: var(--background-color);
+}
+
+.plain {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+.field {
+  display: flex;
+}
+
+.field > input,
+.field > select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: inherit;
+  background: none;
+  outline: none;
+}
+
+.field:focus-within::before {
+  border-width: 2.5px;
+}
+
+/* Fond de la map, repris par la roue des humeurs : le fixed à inset 0 aligne les deux grilles. */
+.grid-background {
+  background: var(--background-color) url("./img/grid.svg") 0 0 / 50px 50px;
 }

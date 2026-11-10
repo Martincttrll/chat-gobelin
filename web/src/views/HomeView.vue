@@ -14,9 +14,15 @@ const messagesByChannel = ref<Record<number, Message[]>>({});
 
 async function loadMessages() {
   const channels = userStore.me?.channels ?? [];
-  const lists = await Promise.all(channels.map((channel) => getMessages(channel.id)));
+  // allSettled : un channel en erreur (ex. « general » quand l'horloge du back écrit des metadata
+  // invalides) ne doit pas vider la liste des autres.
+  const results = await Promise.allSettled(channels.map((channel) => getMessages(channel.id)));
   messagesByChannel.value = Object.fromEntries(
-    channels.map((channel, i) => [channel.id, lists[i]!]),
+    channels.map((channel, i) => {
+      const result = results[i]!;
+      const previous = messagesByChannel.value[channel.id] ?? [];
+      return [channel.id, result.status === "fulfilled" ? result.value : previous];
+    }),
   );
 }
 
@@ -46,7 +52,7 @@ onUnmounted(() => {
       </li>
     </ul>
 
-    <button class="fab" aria-label="Nouveau channel" @click="sheetOpen = true">+</button>
+    <button class="fab filled" aria-label="Nouveau channel" @click="sheetOpen = true">+</button>
 
     <!-- :duration car les transitions sont sur les enfants (fond, panneau), pas sur la racine. -->
     <Transition name="sheet" :duration="{ enter: 300, leave: 200 }">
@@ -76,10 +82,9 @@ onUnmounted(() => {
   width: 3.5rem;
   height: 3.5rem;
   padding: 0;
-  border: none;
   border-radius: 50%;
-  background: var(--primary-color);
-  color: var(--background-color);
+  --sketch-background: var(--primary-color);
+  --sketch-border: var(--primary-color);
   font-size: 2rem;
   line-height: 1;
 }

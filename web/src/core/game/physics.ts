@@ -75,6 +75,17 @@ export function movePlayer(player: Player, dt: number, size: Size, speed = PLAYE
   player.y += ((player.target.y - player.y) * step) / remaining
 }
 
+// Déplacement au joystick : tilt de -1 à 1 sur chaque axe, vitesse proportionnelle à l'inclinaison.
+export function pushPlayer(player: Player, tilt: Point, dt: number, size: Size, speed = PLAYER_SPEED) {
+  const moved = {
+    x: player.x + (tilt.x * speed * dt) / size.width,
+    y: player.y + (tilt.y * speed * dt) / size.height,
+  }
+  const clamped = clampToMap(moved, PLAYER_RADIUS, size)
+  player.x = clamped.x
+  player.y = clamped.y
+}
+
 // direction : vecteur en px (pas besoin d'être normalisé). tension : 0 → 1.
 export function launchVelocity(direction: Point, tension: number, typingSpeed: number) {
   const length = Math.hypot(direction.x, direction.y) || 1

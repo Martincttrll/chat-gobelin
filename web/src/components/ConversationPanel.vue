@@ -46,14 +46,15 @@ watch(
     <div class="backdrop" @click="emit('close')" />
 
     <aside class="panel">
+      <span class="handle" aria-hidden="true" />
       <header>
         <h2>Discussion</h2>
-        <button @click="emit('close')">✕</button>
+        <button class="plain" @click="emit('close')">✕</button>
       </header>
 
       <ul ref="list" class="messages">
         <li v-if="messages.length === 0">Aucun message pour l'instant.</li>
-        <li v-for="message in messages" :key="message.creation_date">
+        <li v-for="message in messages" :key="message.id">
           <small>{{ formatTime(message.creation_date) }}</small>
           <strong>{{ message.user }}</strong>
           <StyledMessage :message="message" />
@@ -85,7 +86,7 @@ watch(
 
 .conversation-enter-from .panel,
 .conversation-leave-to .panel {
-  transform: translateX(100%);
+  transform: translateY(100%);
 }
 
 .backdrop {
@@ -97,16 +98,29 @@ watch(
 
 .panel {
   position: fixed;
-  top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
   z-index: 21;
-  width: 85%;
-  max-width: 420px;
+  height: 90dvh;
+  max-width: 480px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--text-color);
+  border: 1px solid var(--text-color);
+  border-bottom: none;
+  border-radius: 1.25rem 1.25rem 0 0;
   background: var(--background-color);
+}
+
+.handle {
+  align-self: center;
+  width: 2.5rem;
+  height: 4px;
+  margin-top: 0.5rem;
+  border-radius: 2px;
+  background: var(--text-color);
+  opacity: 0.4;
 }
 
 header {
