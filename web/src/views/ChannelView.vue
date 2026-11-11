@@ -36,7 +36,7 @@ watch(
 );
 
 // Pas encore de WebSocket côté API : on recharge les messages toutes les 3 s.
-let timer: number;
+let timer: ReturnType<typeof setInterval>;
 onMounted(() => {
   timer = setInterval(loadMessages, 3000);
 });
@@ -51,14 +51,15 @@ onUnmounted(() => {
     <GameView :channel-id="channel.id" />
 
     <nav class="topbar">
-      <RouterLink class="sketch" :to="{ name: 'home' }">←</RouterLink>
+      <RouterLink :to="{ name: 'home' }">
+        <img src="@/assets/img/back-arrow.svg" alt="Retour à l'accueil" />
+      </RouterLink>
       <img
         @click="conversationOpen = true"
         src="@/assets/img/chat.svg"
         alt="Ouvrir la discussion" />
     </nav>
 
-    <!-- :duration car les transitions sont sur les enfants (fond, panneau), pas sur la racine. -->
     <Transition name="conversation" :duration="{ enter: 300, leave: 200 }">
       <ConversationPanel
         v-if="conversationOpen"

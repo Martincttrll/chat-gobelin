@@ -3,6 +3,7 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { createUser } from "@/api/users";
+import BlobBackground from "@/components/BlobBackground.vue";
 
 type Mode = "login" | "signup";
 
@@ -52,22 +53,11 @@ async function submit() {
 </script>
 
 <template>
-  <svg
-    class="blobs"
-    width="402"
-    height="503"
-    viewBox="0 0 402 503"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M417.493 197.912C425.24 247.57 319.597 450.154 189.179 470.5C58.7605 490.846 -47.0469 321.251 -54.7938 271.594C-62.5408 221.936 36.9041 165.187 167.323 144.841C297.741 124.494 409.746 148.255 417.493 197.912Z"
-      fill="#3900FF" />
-    <path
-      d="M401.179 108C401.179 167.647 336.484 216 256.679 216C176.874 216 -47.821 148 112.179 108C272.179 68 176.874 0 256.679 0C336.484 0 401.179 48.3532 401.179 108Z"
-      fill="#7D7979" />
-  </svg>
+  <BlobBackground placement="center" />
   <main class="login">
-    <h1>Type Swap</h1>
+    <h1>
+      <img src="@/assets/img/logo.svg" alt="Logo Catchup" />
+    </h1>
 
     <div class="form-wrapper">
       <div v-if="!mode" class="choice">
@@ -135,17 +125,9 @@ async function submit() {
   margin: 0 auto;
 }
 
-.blobs {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%);
-  filter: blur(55px);
-}
-
 h1 {
   position: absolute;
-  top: 10vh;
+  top: 160px;
   left: 0;
   right: 0;
   margin: 0;

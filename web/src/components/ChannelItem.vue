@@ -3,12 +3,12 @@ import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import type { Channel, Message } from "@/types/api";
 import { useUserStore } from "@/stores/user";
-import { moodColor } from "@/core/message-style/moods";
+import { moodColor, moodSecondaryColor } from "@/core/message-style/moods";
 import { getLastSeen } from "@/core/utils/lastSeen";
 
 const props = defineProps<{ channel: Channel; messages: Message[] }>();
 
-const MAX_DOTS = 3;
+const MAX_BALLS = 4;
 
 const userStore = useUserStore();
 
@@ -22,8 +22,9 @@ const unread = computed(() => {
   );
 });
 
-const dots = computed(() => unread.value.slice(-MAX_DOTS));
-const extraCount = computed(() => unread.value.length - dots.value.length);
+// Le plus récent devant (à gauche), les plus anciens derrière, de plus en plus flous.
+const balls = computed(() => unread.value.slice(-MAX_BALLS).reverse());
+const countLabel = computed(() => (unread.value.length > 9 ? "9+" : String(unread.value.length)));
 
 const lastTime = computed(() => {
   if (!lastMessage.value) return "";
@@ -40,28 +41,27 @@ const lastTime = computed(() => {
     <span class="avatar">{{ channel.name.charAt(0).toUpperCase() }}</span>
 
     <div class="info">
-      <div class="row">
-        <strong class="name">{{ channel.name }}</strong>
-        <small class="time" :class="{ fresh: dots.length }">{{ lastTime }}</small>
-      </div>
+      <span class="name">{{ channel.name }}</span>
+      <span v-if="lastMessage" class="last">
+        <span class="sender-ball" :style="{ backgroundColor: moodColor(lastMessage.metadata) }" />
+        {{ lastMessage.user }} · {{ lastTime }}
+      </span>
+      <span v-else class="last">Aucun message</span>
+    </div>
 
-      <div class="row">
-        <span v-if="lastMessage" class="last">
-          <span class="ball" :style="{ backgroundColor: moodColor(lastMessage.metadata) }" />
-          {{ lastMessage.user }}
-        </span>
-        <span v-else class="last">Aucun message</span>
-
-        <div v-if="dots.length" class="unread">
-          <span
-            v-for="message in dots"
-            :key="message.id"
-            class="dot"
-            :style="{ backgroundColor: moodColor(message.metadata) }"
-          />
-          <small v-if="extraCount > 0" class="extra">+{{ extraCount }}</small>
-        </div>
-      </div>
+    <div v-if="balls.length" class="unread">
+      <span
+        v-for="(message, i) in balls"
+        :key="message.id"
+        class="ball"
+        :style="{
+          '--color': moodColor(message.metadata),
+          '--glow': moodSecondaryColor(message.metadata),
+          '--i': i,
+          zIndex: balls.length - i,
+        }">
+        <template v-if="i === 0 && unread.length > 1">{{ countLabel }}</template>
+      </span>
     </div>
   </RouterLink>
 </template>
@@ -70,8 +70,8 @@ const lastTime = computed(() => {
 .item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0;
+  gap: 1rem;
+  padding: 1rem 0;
   color: inherit;
   text-decoration: none;
 }
@@ -93,31 +93,13 @@ const lastTime = computed(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
-}
-
-.row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 .name {
   overflow: hidden;
+  font-size: 1.2rem;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.time {
-  flex-shrink: 0;
-  opacity: 0.5;
-}
-
-.time.fresh {
-  opacity: 1;
 }
 
 .last {
@@ -125,14 +107,15 @@ const lastTime = computed(() => {
   align-items: center;
   gap: 0.4rem;
   min-width: 0;
-  opacity: 0.6;
+  font-size: 0.8rem;
+  opacity: 0.5;
   white-space: nowrap;
 }
 
-.ball {
+.sender-ball {
   flex-shrink: 0;
-  width: 0.6rem;
-  height: 0.6rem;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
 }
 
@@ -142,19 +125,34 @@ const lastTime = computed(() => {
   align-items: center;
 }
 
-.dot {
-  width: 1.1rem;
-  height: 1.1rem;
+.ball {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
   border-radius: 50%;
-  border: 2px solid var(--background-color);
+  background: var(--color);
+  box-shadow: 0 0 0.8rem var(--glow);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-shadow: 0 0 3px rgb(0 0 0 / 0.5);
 }
 
-/* Les dots se chevauchent : le plus récent est à droite, par-dessus. */
-.dot + .dot {
-  margin-left: -0.55rem;
+.ball + .ball {
+  margin-left: -1.1rem;
 }
 
-.extra {
-  margin-left: 0.3rem;
+/* --i = rang de la boule (0 devant) : chaque boule est un cran plus sombre que la précédente
+   (brightness plutôt qu'opacity, pour ne pas voir à travers). */
+.ball {
+  --brightness-step: 0.15;
+  filter: brightness(calc(1 - var(--i) * var(--brightness-step)));
+}
+
+/* Figma : layer blur 1.8 sur les boules de derrière ; le blur CSS vaut environ la moitié de la valeur Figma. */
+.ball + .ball {
+  filter: blur(0.9px) brightness(calc(1 - var(--i) * var(--brightness-step)));
 }
 </style>

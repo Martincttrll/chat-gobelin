@@ -6,6 +6,7 @@ import type { Message } from "@/types/api";
 import BaseLayout from "@/layouts/BaseLayout.vue";
 import ChannelItem from "@/components/ChannelItem.vue";
 import NewChannelSheet from "@/components/NewChannelSheet.vue";
+import ProfilePicture from "@/components/ProfilePicture.vue";
 
 const userStore = useUserStore();
 
@@ -30,7 +31,7 @@ async function loadMessages() {
 watch(() => userStore.me?.channels.length, loadMessages, { immediate: true });
 
 // Pas encore de WebSocket côté API : on recharge les messages toutes les 3 s.
-let timer: number;
+let timer: ReturnType<typeof setInterval>;
 onMounted(() => {
   timer = setInterval(loadMessages, 3000);
 });
@@ -40,10 +41,17 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <BaseLayout>
+  <BaseLayout title="Discussions">
+    <template #actions>
+      <RouterLink :to="{ name: 'settings' }" class="profile" aria-label="Personnalisation">
+        <ProfilePicture :avatar="userStore.profile.avatar" :username="userStore.me?.username" />
+        <img class="edit-badge" src="@/assets/img/pencil.svg" alt="" />
+      </RouterLink>
+    </template>
+
     <p v-if="userStore.me?.channels.length === 0" class="empty">
       Tu n'as encore rejoint aucun channel.<br />
-      Appuie sur + pour en créer ou en rejoindre un.
+      Touche le bouton en bas à droite pour en créer ou en rejoindre un.
     </p>
 
     <ul class="channels">
@@ -52,7 +60,9 @@ onUnmounted(() => {
       </li>
     </ul>
 
-    <button class="fab filled" aria-label="Nouveau channel" @click="sheetOpen = true">+</button>
+    <button class="plain new-conv" aria-label="Créer ou rejoindre un channel" @click="sheetOpen = true">
+      <img src="@/assets/img/new-conv.svg" alt="" />
+    </button>
 
     <!-- :duration car les transitions sont sur les enfants (fond, panneau), pas sur la racine. -->
     <Transition name="sheet" :duration="{ enter: 300, leave: 200 }">
@@ -65,7 +75,20 @@ onUnmounted(() => {
 .channels {
   list-style: none;
   margin: 0;
-  padding: 0 0 6rem;
+  padding: 0 0.5rem 6.5rem;
+}
+
+/* Séparateur dessiné à la main : trait de 1px au milieu d'une boîte plus haute, pour que le filtre ne le coupe pas. */
+.channels li + li::before {
+  content: "";
+  display: block;
+  height: 0.5rem;
+  background: linear-gradient(
+      color-mix(in srgb, var(--text-color) 30%, transparent),
+      color-mix(in srgb, var(--text-color) 30%, transparent)
+    )
+    center / 100% 1px no-repeat;
+  filter: url(#sketch-strong);
 }
 
 .empty {
@@ -74,18 +97,32 @@ onUnmounted(() => {
   opacity: 0.6;
 }
 
-.fab {
+.profile {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 1.1rem;
+  text-decoration: none;
+}
+
+.edit-badge {
+  position: absolute;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  width: 1rem;
+  height: 1rem;
+}
+
+.new-conv {
   position: fixed;
   right: 1.25rem;
   bottom: calc(1.25rem + env(safe-area-inset-bottom));
   z-index: 10;
-  width: 3.5rem;
-  height: 3.5rem;
-  padding: 0;
-  border-radius: 50%;
-  --sketch-background: var(--primary-color);
-  --sketch-border: var(--primary-color);
-  font-size: 2rem;
-  line-height: 1;
+}
+
+.new-conv img {
+  display: block;
+  width: 4.5rem;
+  height: 4.5rem;
 }
 </style>

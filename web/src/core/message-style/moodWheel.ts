@@ -3,9 +3,9 @@ import type { Mood } from '@/types/api'
 import { MOODS } from './moods'
 
 const RADIUS = 130 // px, distance entre le doigt et les humeurs
-// Éventail vers le haut-gauche (0° = droite, 90° = haut) : le bouton est en bas à droite de l'écran.
-const START_ANGLE = 75
-const END_ANGLE = 195
+// Éventail vers le haut (0° = droite, 90° = haut) : le bouton est en bas au centre de l'écran.
+const START_ANGLE = 150
+const END_ANGLE = 30
 const DEAD_ZONE = 40 // px autour du bouton où rien n'est sélectionné
 const PICK_DISTANCE = 70 // px max entre le doigt et une humeur
 

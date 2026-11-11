@@ -1,11 +1,13 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getCurrentUser, login as apiLogin } from '@/api/users'
-import type { Credentials, Me } from '@/types/api'
+import { NAMESPACE } from '@/api/client'
+import type { Credentials, Me, UserMetadata } from '@/types/api'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(localStorage.getItem('token'))
   const me = ref<Me | null>(null)
+  const profile = computed(() => (me.value?.metadata?.[NAMESPACE] ?? {}) as UserMetadata)
 
   async function login(credentials: Credentials) {
     token.value = await apiLogin(credentials)
@@ -23,5 +25,5 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('token')
   }
 
-  return { token, me, login, fetchMe, logout }
+  return { token, me, profile, login, fetchMe, logout }
 })

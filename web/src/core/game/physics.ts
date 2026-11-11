@@ -16,6 +16,7 @@ export interface Size {
 export interface Player extends Point {
   id: string
   name: string
+  avatar?: string // id d'un avatar de profile-pic ; sinon on affiche le monogramme
   target: Point | null
 }
 

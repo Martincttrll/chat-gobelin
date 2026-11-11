@@ -25,8 +25,8 @@ export interface Catch {
   thrower: Player | undefined
 }
 
-export function createWorld(myName: string): World {
-  const me: Player = { id: 'me', name: myName, ...randomPoint(), target: null }
+export function createWorld(myName: string, myAvatar?: string): World {
+  const me: Player = { id: 'me', name: myName, avatar: myAvatar, ...randomPoint(), target: null }
   const dummy: Player = { id: 'dummy', name: 'Dummy', ...randomPoint(), target: null }
   return { me, dummy, players: [me, dummy], balls: [], nextBallId: 0 }
 }

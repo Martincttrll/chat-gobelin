@@ -35,7 +35,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div ref="root" class="wheel grid-background">
+  <div ref="root" class="wheel">
     <div
       v-for="item in items"
       :key="item.mood"
@@ -44,7 +44,7 @@ onMounted(async () => {
       :style="{
         left: `${item.x - offset.x}px`,
         top: `${item.y - offset.y}px`,
-        '--color': MOODS[item.mood].color ?? 'var(--background-color)',
+        '--color': MOODS[item.mood].color ?? 'var(--text-color)',
       }">
       <span class="dot" />
       <span v-if="item.mood === hovered" class="label">{{
@@ -60,14 +60,15 @@ onMounted(async () => {
   inset: 0;
   z-index: 40;
   pointer-events: none;
+  background: color-mix(in srgb, var(--background-color) 70%, transparent);
 }
 
 /* .item est animé par GSAP, qui écrit transform et scale en inline : le grossissement au survol
    est donc sur .dot, un enfant que GSAP ne touche pas. margin plutôt que translate(-50%) pour la même raison. */
 .item {
   position: absolute;
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   margin: -24px 0 0 -24px;
 }
 
@@ -75,9 +76,9 @@ onMounted(async () => {
   display: block;
   width: 100%;
   height: 100%;
-  border: 1.5px solid var(--text-color);
   border-radius: 50%;
   background: var(--color);
+  filter: url(#sketch-strong);
   transition: scale 0.15s ease-out;
 }
 

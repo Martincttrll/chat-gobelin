@@ -15,7 +15,10 @@ async function submit(action: "create" | "join") {
   const name = channelName.value.trim();
 
   // L'API ajoute le channel en double si on le rejoint alors qu'on en est déjà membre.
-  if (action === "join" && userStore.me?.channels.some((c) => c.name === name)) {
+  if (
+    action === "join" &&
+    userStore.me?.channels.some((c) => c.name === name)
+  ) {
     error.value = "Tu fais déjà partie de ce channel.";
     return;
   }
@@ -27,7 +30,9 @@ async function submit(action: "create" | "join") {
     emit("close");
   } catch {
     error.value =
-      action === "create" ? "Impossible de créer le channel." : "Ce channel n'existe pas.";
+      action === "create"
+        ? "Impossible de créer le channel."
+        : "Ce channel n'existe pas.";
   }
 }
 </script>
@@ -37,7 +42,7 @@ async function submit(action: "create" | "join") {
     <div class="backdrop" @click="emit('close')" />
 
     <form class="sheet" @submit.prevent="submit('join')">
-      <h2>Nouveau channel</h2>
+      <h2>Nouvelle discussion</h2>
       <span class="field">
         <input v-model="channelName" placeholder="Nom du channel" required />
       </span>
@@ -45,7 +50,10 @@ async function submit(action: "create" | "join") {
 
       <div class="actions">
         <button type="submit" class="filled">Rejoindre</button>
-        <button type="button" :disabled="!channelName.trim()" @click="submit('create')">
+        <button
+          type="button"
+          :disabled="!channelName.trim()"
+          @click="submit('create')">
           Créer
         </button>
       </div>
@@ -98,8 +106,6 @@ async function submit(action: "create" | "join") {
   margin: 0 auto;
   padding: 1.25rem 1rem;
   padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
-  border: 1px solid var(--text-color);
-  border-bottom: none;
   border-radius: 1.25rem 1.25rem 0 0;
   background: var(--background-color);
 }

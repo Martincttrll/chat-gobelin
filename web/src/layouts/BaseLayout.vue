@@ -1,29 +1,23 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { RouterLink } from "vue-router";
-import { useUserStore } from "@/stores/user";
+import type { RouteLocationRaw } from "vue-router";
+import BlobBackground from "@/components/BlobBackground.vue";
 
-const userStore = useUserStore();
-const menuOpen = ref(false);
+withDefaults(defineProps<{ title?: string; back?: RouteLocationRaw }>(), {
+  title: "Type Swap",
+});
 </script>
 
 <template>
+  <BlobBackground />
+
   <header>
-    <RouterLink :to="{ name: 'home' }" class="logo">Type Swap</RouterLink>
-
-    <div class="profile">
-      <button class="avatar" aria-label="Profil" @click="menuOpen = !menuOpen">
-        {{ userStore.me?.username.charAt(0).toUpperCase() }}
-      </button>
-
-      <template v-if="menuOpen">
-        <div class="menu-backdrop" @click="menuOpen = false" />
-        <div class="menu">
-          <p>{{ userStore.me?.username }}</p>
-          <button class="plain" @click="userStore.logout()">Se déconnecter</button>
-        </div>
-      </template>
+    <div class="title">
+      <RouterLink v-if="back" :to="back" class="back" aria-label="Retour">
+        <img src="@/assets/img/back-arrow.svg" alt="" />
+      </RouterLink>
+      <h1>{{ title }}</h1>
     </div>
+    <slot name="actions" />
   </header>
 
   <main>
@@ -36,57 +30,22 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0 1rem;
+  padding: 2rem 0.5rem 1.5rem;
 }
 
-.logo {
+.title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.back {
+  display: flex;
+}
+
+h1 {
+  margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: inherit;
-  text-decoration: none;
-}
-
-.profile {
-  position: relative;
-}
-
-.avatar {
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
-  border-radius: 50%;
-  font-weight: 600;
-}
-
-.menu-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-}
-
-.menu {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  z-index: 31;
-  min-width: 12rem;
-  padding: 0.5rem;
-  border: 1px solid var(--text-color);
-  border-radius: 1rem;
-  background: var(--background-color);
-}
-
-.menu p {
-  margin: 0;
-  padding: 0.5rem;
-  opacity: 0.6;
-}
-
-.menu button {
-  width: 100%;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  text-align: left;
-  color: var(--red);
 }
 </style>

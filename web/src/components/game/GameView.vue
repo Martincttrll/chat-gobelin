@@ -11,7 +11,7 @@ import {
 import gsap from "gsap";
 import { useUserStore } from "@/stores/user";
 import { sendMessage } from "@/api/messages";
-import type { Message, MessageMetadata } from "@/types/api";
+import type { Message, MessageMetadata, Mood } from "@/types/api";
 import { moodColor } from "@/core/message-style/moods";
 import {
   MAX_PULL,
@@ -36,6 +36,7 @@ import ReceivedMessage from "@/components/game/ReceivedMessage.vue";
 import Joystick from "@/components/game/Joystick.vue";
 import { stickTilt } from "@/core/game/joystick";
 import TrailScene from "@/core/trail/TrailScene";
+import { avatarUrl } from "@/core/utils/avatars";
 
 const props = defineProps<{ channelId: number }>();
 const userStore = useUserStore();
@@ -44,7 +45,9 @@ type Phase = "move" | "aim";
 // Deux schémas de contrôle à comparer (tests avec les créas).
 type Controls = "drag" | "joystick";
 
-const world = reactive(createWorld(userStore.me?.username ?? "Moi"));
+const world = reactive(
+  createWorld(userStore.me?.username ?? "Moi", userStore.profile.avatar),
+);
 const { me } = world;
 
 const svg = ref<SVGSVGElement>();
@@ -62,10 +65,10 @@ const stick = ref<{ origin: Point; tilt: Point } | null>(null);
 const touching = computed(
   () => followingFinger.value || aim.value !== null || stick.value !== null,
 );
-const received = ref<Message | null>(null);
+const received = ref<{ message: Message; origin: Point } | null>(null);
 const toast = ref("");
 
-let toastTimer: number | undefined;
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 // Pas de ref() : Vue envelopperait les objets Three dans des proxys réactifs.
 let trailScene: TrailScene | undefined;
 
@@ -101,10 +104,8 @@ function onComposerSubmit(text: string, metadata: MessageMetadata) {
   phase.value = "aim";
 }
 
-function cancelMessage() {
-  pending.value = null;
-  aim.value = null;
-  phase.value = "move";
+function setMood(mood: Mood) {
+  if (pending.value) pending.value.metadata.mood = mood;
 }
 
 function launch() {
@@ -125,7 +126,7 @@ function launch() {
 function onCatch({ ball, catcher, thrower }: Catch) {
   if (catcher.id === me.id) {
     const now = new Date().toISOString();
-    received.value = {
+    const message: Message = {
       id: ball.id,
       content: ball.text,
       user: thrower?.name ?? "?",
@@ -135,6 +136,7 @@ function onCatch({ ball, catcher, thrower }: Catch) {
       posted_at: now,
       metadata: ball.metadata,
     };
+    received.value = { message, origin: { ...mePx.value } };
   } else {
     showToast(
       `${catcher.name} a attrapé ${ball.throwerId === me.id ? "ton" : "un"} message`,
@@ -271,17 +273,31 @@ onUnmounted(() => {
         r="4" />
 
       <g v-for="player in world.players" :key="player.id">
-        <circle
-          class="player"
-          :class="{ me: player.id === me.id }"
-          :cx="player.x * size.width"
-          :cy="player.y * size.height"
-          :r="PLAYER_RADIUS" />
+        <image
+          v-if="avatarUrl(player.avatar)"
+          :href="avatarUrl(player.avatar)"
+          :x="player.x * size.width - PLAYER_RADIUS"
+          :y="player.y * size.height - PLAYER_RADIUS"
+          :width="PLAYER_RADIUS * 2"
+          :height="PLAYER_RADIUS * 2" />
+        <template v-else>
+          <circle
+            class="player"
+            :cx="player.x * size.width"
+            :cy="player.y * size.height"
+            :r="PLAYER_RADIUS" />
+          <text
+            class="monogram"
+            :x="player.x * size.width"
+            :y="player.y * size.height">
+            {{ player.name.charAt(0).toUpperCase() }}
+          </text>
+        </template>
         <text
           class="name"
           :x="player.x * size.width"
           :y="player.y * size.height + PLAYER_RADIUS + 14">
-          {{ player.name }}
+          {{ player.id === me.id ? "Moi" : player.name }}
         </text>
       </g>
 
@@ -323,8 +339,9 @@ onUnmounted(() => {
     <GameHud
       :aiming="phase === 'aim'"
       :touching="touching"
+      :mood="pending?.metadata.mood ?? 'neutral'"
       @submit="onComposerSubmit"
-      @cancel="cancelMessage" />
+      @mood="setMood" />
 
     <Joystick v-if="stick" :origin="stick.origin" :tilt="stick.tilt" />
 
@@ -339,7 +356,9 @@ onUnmounted(() => {
 
     <ReceivedMessage
       v-if="received"
-      :message="received"
+      :key="received.message.id"
+      :message="received.message"
+      :origin="received.origin"
       @close="received = null" />
   </div>
 </template>
@@ -377,9 +396,12 @@ onUnmounted(() => {
   stroke-width: 1.5;
 }
 
-.player.me {
-  stroke: var(--primary-color);
-  stroke-width: 3;
+.monogram {
+  font-size: 18px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: var(--text-color);
 }
 
 .name {

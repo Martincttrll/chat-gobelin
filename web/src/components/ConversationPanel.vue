@@ -1,12 +1,44 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from "vue";
 import type { Message } from "@/types/api";
-import StyledMessage from "@/components/StyledMessage.vue";
+import { useUserStore } from "@/stores/user";
 
 const props = defineProps<{ messages: Message[] }>();
 const emit = defineEmits<{ close: [] }>();
+const userStore = useUserStore();
 
+const panel = ref<HTMLElement>();
 const list = ref<HTMLElement>();
+
+// Distance de glissé vers le bas (px) au-delà de laquelle le panneau se ferme au relâchement.
+const CLOSE_DISTANCE = 100;
+
+const dragY = ref(0);
+const dragging = ref(false);
+let dragStart = 0;
+
+function onDragStart(event: PointerEvent) {
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  dragging.value = true;
+  dragStart = event.clientY;
+}
+
+function onDragMove(event: PointerEvent) {
+  if (!dragging.value) return;
+  dragY.value = Math.max(0, event.clientY - dragStart);
+}
+
+function onDragEnd() {
+  if (!dragging.value) return;
+  dragging.value = false;
+  if (dragY.value > CLOSE_DISTANCE) {
+    // Le style inline l'emporte sur la classe de sortie du <Transition> : on finit le glissé nous-mêmes.
+    dragY.value = panel.value!.offsetHeight;
+    emit("close");
+  } else {
+    dragY.value = 0;
+  }
+}
 
 // Marge en px : on considère qu'on est « en bas » même à quelques pixels près.
 const BOTTOM_THRESHOLD = 40;
@@ -18,13 +50,6 @@ function isAtBottom() {
 
 function scrollToBottom() {
   list.value!.scrollTop = list.value!.scrollHeight;
-}
-
-function formatTime(date: string) {
-  return new Date(date).toLocaleTimeString("fr-FR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 onMounted(scrollToBottom);
@@ -45,19 +70,28 @@ watch(
   <div class="conversation">
     <div class="backdrop" @click="emit('close')" />
 
-    <aside class="panel">
-      <span class="handle" aria-hidden="true" />
-      <header>
-        <h2>Discussion</h2>
-        <button class="plain" @click="emit('close')">✕</button>
-      </header>
+    <aside
+      ref="panel"
+      class="panel"
+      :class="{ dragging }"
+      :style="{ transform: dragY ? `translateY(${dragY}px)` : undefined }">
+      <div
+        class="grab"
+        @pointerdown="onDragStart"
+        @pointermove="onDragMove"
+        @pointerup="onDragEnd"
+        @pointercancel="onDragEnd">
+        <span class="handle" aria-hidden="true" />
+      </div>
 
       <ul ref="list" class="messages">
         <li v-if="messages.length === 0">Aucun message pour l'instant.</li>
-        <li v-for="message in messages" :key="message.id">
-          <small>{{ formatTime(message.creation_date) }}</small>
-          <strong>{{ message.user }}</strong>
-          <StyledMessage :message="message" />
+        <li
+          v-for="message in messages"
+          :key="message.id"
+          :class="{ mine: message.user_id === userStore.me?.id }">
+          <span class="author">{{ message.user }}</span>
+          <p class="sketch bubble">{{ message.content }}</p>
         </li>
       </ul>
     </aside>
@@ -107,17 +141,29 @@ watch(
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--text-color);
   border-bottom: none;
   border-radius: 1.25rem 1.25rem 0 0;
   background: var(--background-color);
+  transition: transform 0.2s ease-out;
+}
+
+.panel.dragging {
+  transition: none;
+}
+
+/* Zone tactile plus grande que la poignée visible. */
+.grab {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 0;
+  touch-action: none;
+  cursor: grab;
 }
 
 .handle {
   align-self: center;
   width: 2.5rem;
   height: 4px;
-  margin-top: 0.5rem;
   border-radius: 2px;
   background: var(--text-color);
   opacity: 0.4;
@@ -128,7 +174,6 @@ header {
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--text-color);
 }
 
 h2 {
@@ -146,16 +191,52 @@ h2 {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
 }
 
 .messages li {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  gap: 0.25rem;
 }
 
-.messages small {
+.messages li.mine {
+  align-items: flex-end;
+}
+
+.author {
+  padding: 0 1rem;
+  font-size: 0.75rem;
   opacity: 0.6;
+}
+
+.bubble {
+  --sketch-background: var(--bubble);
+  --sketch-border: var(--bubble);
+  max-width: 80%;
+  margin: 0 0 0.75rem;
+  padding: 0.9rem 1.5rem;
+  border-radius: 1.75rem;
+  overflow-wrap: anywhere;
+}
+
+/* Queue en triangle de bordures et pas en clip-path : clip-path couperait le contour crayonné du filtre. */
+.bubble::after {
+  content: "";
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 1.5rem;
+  z-index: -1;
+  border-top: 1rem solid var(--bubble);
+  border-right: 2rem solid transparent;
+  filter: url(#sketch);
+}
+
+.mine .bubble::after {
+  left: auto;
+  right: 1.5rem;
+  border-right: none;
+  border-left: 2rem solid transparent;
 }
 </style>

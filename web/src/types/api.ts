@@ -18,6 +18,11 @@ export interface User {
   metadata: NamespacedMetadata | null
 }
 
+// Nos metadata d'utilisateur (namespace type-swap).
+export interface UserMetadata {
+  avatar?: string
+}
+
 // Réponse de GET /me.
 export interface Me extends User {
   channels: Channel[]
