@@ -34,6 +34,9 @@ export interface MessageMetadata {
   mood: Mood
   typingSpeed: number
   pauses: number[]
+  // Partagé entre tous les joueurs. Absent sur les messages d'avant la feature : considérés ramassés.
+  pickedUp?: boolean
+  ground?: { x: number; y: number } // où la boule s'est arrêtée (coordonnées 0–1 de la map)
 }
 
 // Message tel que renvoyé par l'API.

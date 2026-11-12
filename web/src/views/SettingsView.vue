@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { editMyMetadata } from "@/api/users";
-import { CHARACTERS, SHAPES } from "@/core/utils/avatars";
+import { AVATARS } from "@/core/utils/avatars";
 import BaseLayout from "@/layouts/BaseLayout.vue";
 
 const router = useRouter();
@@ -14,11 +14,6 @@ const saving = ref(false);
 const error = ref("");
 
 const changed = computed(() => selected.value !== userStore.profile.avatar);
-
-const sections = [
-  { title: "Formes", avatars: SHAPES },
-  { title: "Personnages", avatars: CHARACTERS },
-];
 
 async function apply() {
   error.value = "";
@@ -39,24 +34,21 @@ async function apply() {
 <template>
   <BaseLayout title="Personnalisation" :back="{ name: 'home' }">
     <div class="settings">
-      <template v-for="(section, i) in sections" :key="section.title">
-        <hr v-if="i > 0" class="sketch-line" />
-        <section>
-          <h2>{{ section.title }}</h2>
-          <div class="avatars">
-            <button
-              v-for="avatar in section.avatars"
-              :key="avatar.id"
-              type="button"
-              class="plain avatar"
-              :class="{ selected: avatar.id === selected }"
-              :aria-pressed="avatar.id === selected"
-              @click="selected = avatar.id">
-              <img :src="avatar.url" alt="" />
-            </button>
-          </div>
-        </section>
-      </template>
+      <section>
+        <h2>Avatar</h2>
+        <div class="avatars">
+          <button
+            v-for="avatar in AVATARS"
+            :key="avatar.id"
+            type="button"
+            class="plain avatar"
+            :class="{ selected: avatar.id === selected }"
+            :aria-pressed="avatar.id === selected"
+            @click="selected = avatar.id">
+            <img :src="avatar.url" alt="" />
+          </button>
+        </div>
+      </section>
 
       <hr class="sketch-line" />
 

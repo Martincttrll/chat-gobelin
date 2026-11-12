@@ -7,7 +7,6 @@ import type { Message } from "@/types/api";
 import BaseLayout from "@/layouts/BaseLayout.vue";
 import GameView from "@/components/game/GameView.vue";
 import ConversationPanel from "@/components/ConversationPanel.vue";
-import { markSeen } from "@/core/utils/lastSeen";
 
 const route = useRoute();
 const userStore = useUserStore();
@@ -29,7 +28,6 @@ watch(
   () => channel.value?.id,
   (id) => {
     if (!id) return;
-    markSeen(id);
     loadMessages();
   },
   { immediate: true },
@@ -42,13 +40,12 @@ onMounted(() => {
 });
 onUnmounted(() => {
   clearInterval(timer);
-  if (channel.value) markSeen(channel.value.id);
 });
 </script>
 
 <template>
   <template v-if="channel">
-    <GameView :channel-id="channel.id" />
+    <GameView :channel-id="channel.id" :messages="messages" />
 
     <nav class="topbar">
       <RouterLink :to="{ name: 'home' }">

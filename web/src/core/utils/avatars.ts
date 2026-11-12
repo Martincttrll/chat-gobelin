@@ -1,4 +1,4 @@
-// Tous les SVG du dossier : en ajouter un suffit à le proposer (shapeN = Formes, persoN = Personnages).
+// Tous les SVG du dossier : en ajouter un suffit à le proposer.
 const files = import.meta.glob<string>('@/assets/img/profile-pic/*.svg', {
   eager: true,
   import: 'default',
@@ -9,12 +9,10 @@ export interface Avatar {
   url: string
 }
 
-const AVATARS: Avatar[] = Object.entries(files)
+export const AVATARS: Avatar[] = Object.entries(files)
   .map(([path, url]) => ({ id: path.split('/').pop()!.replace('.svg', ''), url }))
-  .sort((a, b) => a.id.localeCompare(b.id))
-
-export const SHAPES = AVATARS.filter((avatar) => avatar.id.startsWith('shape'))
-export const CHARACTERS = AVATARS.filter((avatar) => avatar.id.startsWith('perso'))
+  // numeric : avatar10 après avatar9, et pas après avatar1.
+  .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
 
 export function avatarUrl(id?: string): string | undefined {
   return AVATARS.find((avatar) => avatar.id === id)?.url

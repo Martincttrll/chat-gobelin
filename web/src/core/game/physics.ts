@@ -30,6 +30,8 @@ export interface Ball extends Point {
   onGround: boolean
   text: string
   metadata: MessageMetadata
+  messageId?: number // id du message dans l'API, connu une fois le POST terminé
+  throwerName?: string // boules restaurées depuis l'API : le lanceur n'est pas forcément sur la map
 }
 
 // Valeurs provisoires.

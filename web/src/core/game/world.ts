@@ -1,4 +1,4 @@
-import type { MessageMetadata } from '@/types/api'
+import type { Message, MessageMetadata } from '@/types/api'
 import { DUMMY_SPEED, DUMMY_TENSION, randomDummyMessage, randomPoint } from './dummy'
 import {
   launchVelocity,
@@ -39,8 +39,8 @@ export function throwBall(
   metadata: MessageMetadata,
   direction: Point,
   tension: number,
-) {
-  world.balls.push({
+): Ball {
+  const ball: Ball = {
     id: world.nextBallId++,
     x: thrower.x,
     y: thrower.y,
@@ -50,6 +50,27 @@ export function throwBall(
     onGround: false,
     text,
     metadata,
+  }
+  world.balls.push(ball)
+  return ball
+}
+
+// Pose au sol la boule d'un message resté non ramassé.
+export function dropBall(world: World, message: Message, throwerId: string) {
+  const { ground } = message.metadata!
+  world.balls.push({
+    id: world.nextBallId++,
+    x: ground!.x,
+    y: ground!.y,
+    vx: 0,
+    vy: 0,
+    throwerId,
+    throwerName: message.user,
+    armed: true,
+    onGround: true,
+    text: message.content,
+    metadata: message.metadata!,
+    messageId: message.id,
   })
 }
 

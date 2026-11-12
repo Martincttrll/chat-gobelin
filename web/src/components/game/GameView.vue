@@ -10,7 +10,7 @@ import {
 } from "vue";
 import gsap from "gsap";
 import { useUserStore } from "@/stores/user";
-import { sendMessage } from "@/api/messages";
+import { editMessage, sendMessage } from "@/api/messages";
 import type { Message, MessageMetadata, Mood } from "@/types/api";
 import { moodColor } from "@/core/message-style/moods";
 import {
@@ -21,11 +21,13 @@ import {
   clampToMap,
   pushPlayer,
   slingshotPull,
+  type Ball,
   type Point,
   type Size,
 } from "@/core/game/physics";
 import {
   createWorld,
+  dropBall,
   dummyThrow,
   stepWorld,
   throwBall,
@@ -38,7 +40,7 @@ import { stickTilt } from "@/core/game/joystick";
 import TrailScene from "@/core/trail/TrailScene";
 import { avatarUrl } from "@/core/utils/avatars";
 
-const props = defineProps<{ channelId: number }>();
+const props = defineProps<{ channelId: number; messages: Message[] }>();
 const userStore = useUserStore();
 
 type Phase = "move" | "aim";
@@ -69,6 +71,9 @@ const received = ref<{ message: Message; origin: Point } | null>(null);
 const toast = ref("");
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
+// Ids de messages dont on a déjà enregistré l'arrêt au sol / le ramassage (le polling peut avoir du retard).
+const landed = new Set<number>();
+const picked = new Set<number>();
 // Pas de ref() : Vue envelopperait les objets Three dans des proxys réactifs.
 let trailScene: TrailScene | undefined;
 
@@ -113,23 +118,67 @@ function launch() {
   aim.value = null;
   if (!pending.value || tension < MIN_TENSION) return;
 
-  const { text, metadata } = pending.value;
-  throwBall(world, me, text, metadata, { x: -offset.x, y: -offset.y }, tension);
-  sendMessage(props.channelId, text, metadata).catch(() => {
-    showToast("Le message n'a pas pu être enregistré.");
-  });
+  const { text } = pending.value;
+  const metadata = { ...pending.value.metadata, pickedUp: false };
+  const ball = throwBall(world, me, text, metadata, { x: -offset.x, y: -offset.y }, tension);
+  sendMessage(props.channelId, text, metadata)
+    .then((message) => {
+      ball.messageId = message.id;
+      // Attrapée avant la fin du POST : on n'avait pas encore l'id pour l'enregistrer.
+      if (!world.balls.some((b) => b.id === ball.id)) savePickup(ball);
+    })
+    .catch(() => {
+      showToast("Le message n'a pas pu être enregistré.");
+    });
 
   pending.value = null;
   phase.value = "move";
 }
 
+function saveLanding(ball: Ball) {
+  if (ball.messageId === undefined || landed.has(ball.messageId)) return;
+  landed.add(ball.messageId);
+  ball.metadata = { ...ball.metadata, ground: { x: ball.x, y: ball.y } };
+  editMessage(ball.messageId, "", ball.metadata).catch(() => landed.delete(ball.messageId!));
+}
+
+function savePickup(ball: Ball) {
+  if (ball.messageId === undefined) return;
+  picked.add(ball.messageId);
+  // ground: undefined disparaît à la sérialisation JSON.
+  editMessage(ball.messageId, "", { ...ball.metadata, pickedUp: true, ground: undefined }).catch(() => {
+    showToast("Le ramassage n'a pas pu être enregistré.");
+  });
+}
+
+// Synchronise les boules au sol avec l'API : celles des autres apparaissent, celles ramassées ailleurs disparaissent.
+watch(
+  () => props.messages,
+  (messages) => {
+    for (const message of messages) {
+      const onMap = world.balls.find((ball) => ball.messageId === message.id);
+      const { pickedUp, ground } = message.metadata ?? {};
+
+      if (pickedUp === false && ground && !onMap && !picked.has(message.id)) {
+        const mine = message.user_id === userStore.me?.id;
+        dropBall(world, message, mine ? me.id : `user-${message.user_id}`);
+        landed.add(message.id);
+      } else if (pickedUp && onMap) {
+        world.balls = world.balls.filter((ball) => ball.messageId !== message.id);
+      }
+    }
+  },
+  { immediate: true },
+);
+
 function onCatch({ ball, catcher, thrower }: Catch) {
+  savePickup(ball);
   if (catcher.id === me.id) {
     const now = new Date().toISOString();
     const message: Message = {
       id: ball.id,
       content: ball.text,
-      user: thrower?.name ?? "?",
+      user: thrower?.name ?? ball.throwerName ?? "?",
       user_id: 0,
       anonymous: false,
       creation_date: now,
@@ -214,6 +263,9 @@ function tick(_time: number, deltaMs: number) {
     pushPlayer(me, stick.value.tilt, dt, size.value);
   }
   stepWorld(world, dt, size.value).forEach(onCatch);
+  for (const ball of world.balls) {
+    if (ball.onGround && ball.throwerId === me.id) saveLanding(ball);
+  }
   trailScene?.update();
 }
 

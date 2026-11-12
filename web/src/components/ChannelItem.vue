@@ -4,7 +4,6 @@ import { RouterLink } from "vue-router";
 import type { Channel, Message } from "@/types/api";
 import { useUserStore } from "@/stores/user";
 import { moodColor, moodSecondaryColor } from "@/core/message-style/moods";
-import { getLastSeen } from "@/core/utils/lastSeen";
 
 const props = defineProps<{ channel: Channel; messages: Message[] }>();
 
@@ -14,13 +13,12 @@ const userStore = useUserStore();
 
 const lastMessage = computed(() => props.messages.at(-1));
 
-const unread = computed(() => {
-  const lastSeen = getLastSeen(props.channel.id);
-  return props.messages.filter(
-    (message) =>
-      message.user_id !== userStore.me?.id && new Date(message.creation_date) > lastSeen,
-  );
-});
+// Messages des autres encore au sol (pas encore ramassés).
+const unread = computed(() =>
+  props.messages.filter(
+    (message) => message.user_id !== userStore.me?.id && message.metadata?.pickedUp === false,
+  ),
+);
 
 // Le plus récent devant (à gauche), les plus anciens derrière, de plus en plus flous.
 const balls = computed(() => unread.value.slice(-MAX_BALLS).reverse());
