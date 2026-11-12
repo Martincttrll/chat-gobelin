@@ -24,12 +24,39 @@
   box-sizing: border-box;
 }
 
+/* L'app ne scrolle jamais la fenêtre : seuls certains conteneurs scrollent (listes, discussion).
+   position: fixed sur body : sinon Safari iOS fait quand même « rebondir » la page. */
+html,
 body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  position: fixed;
+  inset: 0;
   margin: 0;
   background-color: var(--background-color);
   color: var(--text-color);
   font-family: "Acorn", system-ui, sans-serif;
   line-height: 1.5;
+  /* Pas de sélection, de loupe ni de menu à l'appui long (Safari), pas de zoom au double tap. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+img {
+  -webkit-user-drag: none;
 }
 
 #app {
@@ -38,6 +65,9 @@ body {
   width: 100dvw;
   height: 100dvh;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 input,

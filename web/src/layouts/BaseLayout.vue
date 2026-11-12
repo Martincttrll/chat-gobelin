@@ -27,6 +27,7 @@ withDefaults(defineProps<{ title?: string; back?: RouteLocationRaw }>(), {
 
 <style scoped>
 header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -47,5 +48,13 @@ h1 {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
+}
+
+/* La page ne scrolle pas : c'est le contenu qui scrolle, sous l'en-tête. */
+main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 </style>

@@ -545,7 +545,15 @@ onUnmounted(() => {
 
       <defs>
         <!-- Bords irréguliers et légèrement fondus : un premier pas vers l'aquarelle. -->
-        <filter id="trail-paint" x="-10%" y="-10%" width="120%" height="120%">
+        <!-- userSpaceOnUse : en objectBoundingBox, la zone du filtre suit la géométrie des lignes sans
+             leur épaisseur ; une traînée presque droite a une hauteur nulle et disparaît. -->
+        <filter
+          id="trail-paint"
+          filterUnits="userSpaceOnUse"
+          x="0"
+          y="0"
+          :width="size.width"
+          :height="size.height">
           <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="3" result="noise" />
           <feDisplacementMap
             in="SourceGraphic"
@@ -574,11 +582,10 @@ onUnmounted(() => {
         v-for="ball in world.balls"
         :key="ball.id"
         class="ball"
-        :class="{ ground: ball.onGround }"
         :cx="ball.x * size.width"
         :cy="ball.y * size.height"
         :r="ballRadius(ball.text)"
-        :style="{ fill: moodColor(ball.metadata) }" />
+        :style="{ fill: moodColor(ball.metadata), '--glow': moodSecondaryColor(ball.metadata) }" />
 
       <template v-if="phase === 'aim' && pending">
         <template v-if="aim">
@@ -601,7 +608,10 @@ onUnmounted(() => {
           :cx="pendingBallPx.x"
           :cy="pendingBallPx.y"
           :r="ballRadius(pending.text)"
-          :style="{ fill: moodColor(pending.metadata) }" />
+          :style="{
+            fill: moodColor(pending.metadata),
+            '--glow': moodSecondaryColor(pending.metadata),
+          }" />
       </template>
     </svg>
 
@@ -697,12 +707,9 @@ onUnmounted(() => {
   fill: var(--primary-color);
 }
 
+/* Même rendu que les boules de notification de l'accueil : rond crayonné, lueur secondaire. */
 .ball {
-  stroke: var(--text-color);
-}
-
-.ball.ground {
-  opacity: 0.6;
+  filter: url(#sketch) drop-shadow(0 0 0.3rem var(--glow));
 }
 
 .elastic {

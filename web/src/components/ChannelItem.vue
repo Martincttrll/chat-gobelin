@@ -135,12 +135,24 @@ const lastTime = computed(() => {
   width: 1.9rem;
   height: 1.9rem;
   border-radius: 50%;
-  background: var(--color);
+  isolation: isolate;
+  /* Lueur hors du ::before filtré : la zone du filtre (#sketch, 20 % autour) la couperait en carré. */
   box-shadow: 0 0 0.8rem var(--glow);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 600;
   text-shadow: 0 0 3px rgb(0 0 0 / 0.5);
+}
+
+/* Rond crayonné sur un ::before : le chiffre du compteur reste net. */
+.ball::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--color);
+  filter: url(#sketch);
 }
 
 .ball + .ball {
