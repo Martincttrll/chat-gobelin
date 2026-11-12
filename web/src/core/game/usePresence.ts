@@ -5,6 +5,7 @@ import { getConnectedUsers } from '@/api/channels'
 import type { Message, MessageMetadata, Presence } from '@/types/api'
 import type { Point } from './physics'
 import type { World } from './world'
+import { PRESENCE_STALE } from './presence'
 
 // Contournement : le back ne relaie pas encore les événements des clients sur le WebSocket.
 // Chaque joueur a donc un message caché (toShow: false), posté dans le channel technique ws-checkup,
@@ -15,7 +16,7 @@ import type { World } from './world'
 const SEND_INTERVAL = 200 // ms entre deux envois de position (au plus)
 const MIN_MOVE = 0.002 // déplacement minimal (map 0–1) pour renvoyer la position
 const HEARTBEAT = 10_000 // ms : renvoi même immobile, pour prouver qu'on est toujours là
-const STALE = 25_000 // ms sans nouvelle d'un joueur : on le retire
+const STALE = PRESENCE_STALE // ms sans nouvelle d'un joueur : on le retire
 const CONNECTED_POLL = 3000 // ms : le back n'envoie pas d'événement quand quelqu'un se déconnecte
 
 export function usePresence(world: World, channelId: number, messages: () => Message[]) {
@@ -47,6 +48,7 @@ export function usePresence(world: World, channelId: number, messages: () => Mes
         x: me.x,
         y: me.y,
         left,
+        sentAt: Date.now(),
       },
     }
   }

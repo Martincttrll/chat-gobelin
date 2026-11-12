@@ -6,7 +6,8 @@ import { useUserStore } from "@/stores/user";
 import { moodColor, moodSecondaryColor } from "@/core/message-style/moods";
 import { isVisible } from "@/api/messages";
 
-const props = defineProps<{ channel: Channel; messages: Message[] }>();
+// playing : quelqu'un est en train de jouer dans ce channel.
+const props = defineProps<{ channel: Channel; messages: Message[]; playing: boolean }>();
 
 const MAX_BALLS = 4;
 
@@ -38,7 +39,9 @@ const lastTime = computed(() => {
 
 <template>
   <RouterLink class="item" :to="{ name: 'channel', params: { name: channel.name } }">
-    <span class="avatar sketch">{{ channel.name.charAt(0).toUpperCase() }}</span>
+    <span class="avatar sketch">
+      <img v-if="playing" class="star sketch-icon" src="@/assets/img/star.svg" alt="Partie en cours" />
+    </span>
 
     <div class="info">
       <span class="name">{{ channel.name }}</span>
@@ -82,8 +85,10 @@ const lastTime = computed(() => {
   place-items: center;
   width: 3.25rem;
   height: 3.25rem;
-  font-size: 1.25rem;
-  font-weight: 600;
+}
+
+.star {
+  width: 1.5rem;
 }
 
 .info {
