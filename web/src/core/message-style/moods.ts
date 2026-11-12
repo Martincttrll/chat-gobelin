@@ -24,7 +24,7 @@ export const MOODS: Record<Mood, MoodStyle> = {
     label: 'Colère',
     color: 'var(--red)',
     secondary: 'var(--red-secondary)',
-    text: { textTransform: 'uppercase', fontWeight: 700 },
+    text: { textTransform: 'uppercase', fontWeight: 700, fontSize: '1.3em' },
     animation: null,
     cone: false,
   },

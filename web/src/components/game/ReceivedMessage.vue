@@ -5,7 +5,7 @@ import type { Message } from "@/types/api";
 import type { Point } from "@/core/game/physics";
 import { MOODS } from "@/core/message-style/moods";
 import { openingFrames } from "@/core/paper/openingFrames";
-import StyledMessage from "@/components/StyledMessage.vue";
+import MessageMarquee from "@/components/game/MessageMarquee.vue";
 
 const props = defineProps<{ message: Message; origin: Point }>();
 const emit = defineEmits<{ close: [] }>();
@@ -50,10 +50,7 @@ function close() {
           :style="{ clipPath: opened ? 'none' : frames[anim.frame] }" />
       </div>
 
-      <div v-if="opened" class="content">
-        <p>De <strong>{{ message.user }}</strong></p>
-        <StyledMessage :message="message" />
-      </div>
+      <MessageMarquee v-if="opened" :message="message" />
     </div>
   </Teleport>
 </template>
@@ -76,16 +73,5 @@ function close() {
   position: absolute;
   inset: 0;
   background: var(--color);
-}
-
-.content {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  color: var(--background-color);
 }
 </style>
