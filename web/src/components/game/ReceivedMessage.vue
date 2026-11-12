@@ -62,7 +62,7 @@ function close(andResend = false) {
           <strong>@{{ passTo }}</strong> pour lui envoyer.
         </p>
         <button type="button" class="filled resend" @click.stop="close(true)">
-          <img src="@/assets/img/slingshot.svg" alt="" draggable="false" />
+          <img class="sketch-icon" src="@/assets/img/slingshot.svg" alt="" draggable="false" />
           Renvoyer
         </button>
       </div>

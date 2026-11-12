@@ -124,6 +124,11 @@ button:disabled {
   border-width: 2.5px;
 }
 
+/* Tremblé des icônes et du logo, appliqué par la page et pas dans les fichiers SVG (cf. App.vue). */
+.sketch-icon {
+  filter: url(#sketch-icon);
+}
+
 /* Fond quadrillé de la map. */
 .grid-background {
   background: var(--background-color) url("./img/grid.svg") 0 0 / 50px 50px;

@@ -6,8 +6,7 @@ export interface MoodStyle {
   color: string | null
   secondary: string | null
   text: CSSProperties
-  animation: 'dance' | null
-  cone: boolean
+  animation: 'dance' | 'lens' | 'sway' | 'shake' | null
 }
 
 // Valeurs provisoires, en attendant la DA.
@@ -18,7 +17,6 @@ export const MOODS: Record<Mood, MoodStyle> = {
     secondary: null,
     text: {},
     animation: null,
-    cone: false,
   },
   anger: {
     label: 'Colère',
@@ -26,7 +24,6 @@ export const MOODS: Record<Mood, MoodStyle> = {
     secondary: 'var(--red-secondary)',
     text: { textTransform: 'uppercase', fontWeight: 700, fontSize: '1.3em' },
     animation: null,
-    cone: false,
   },
   joy: {
     label: 'Joie',
@@ -34,31 +31,27 @@ export const MOODS: Record<Mood, MoodStyle> = {
     secondary: 'var(--yellow-secondary)',
     text: { fontWeight: 700 },
     animation: 'dance',
-    cone: false,
   },
   sadness: {
     label: 'Tristesse',
     color: 'var(--blue)',
     secondary: 'var(--blue-secondary)',
     text: { fontWeight: 100, fontSize: '0.8em' },
-    animation: null,
-    cone: false,
+    animation: 'sway',
   },
   stress: {
     label: 'Stress',
     color: 'var(--purple)',
     secondary: 'var(--purple-secondary)',
     text: { letterSpacing: '-0.08em' },
-    animation: null,
-    cone: false,
+    animation: 'shake',
   },
   surprise: {
     label: 'Surprise',
     color: 'var(--pink)',
     secondary: 'var(--pink-secondary)',
     text: {},
-    animation: null,
-    cone: true,
+    animation: 'lens',
   },
 }
 

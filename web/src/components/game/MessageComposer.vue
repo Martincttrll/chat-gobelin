@@ -53,13 +53,17 @@ async function submit() {
     <ul v-if="suggestions.length && !collapsed" class="suggestions">
       <li v-for="member in suggestions" :key="member.userId">
         <!-- mousedown.prevent : l'input garde le focus, le clavier mobile ne se ferme pas. -->
-        <button type="button" class="plain" @mousedown.prevent @click="pickMember(member)">
+        <button
+          type="button"
+          class="plain"
+          @mousedown.prevent
+          @click="pickMember(member)">
           @{{ member.name }}
         </button>
       </li>
     </ul>
 
-    <span class="field message" :inert="collapsed">
+    <span class="field message" data-onboarding="input" :inert="collapsed">
       <input
         ref="input"
         v-model="content"
@@ -67,8 +71,12 @@ async function submit() {
         required
         @input="typingTracker.onInput" />
     </span>
-    <button type="submit" :disabled="analysing" @mousedown.prevent>
-      <img src="@/assets/img/slingshot-white.svg" alt="Envoyer le message" draggable="false" />
+    <button type="submit" data-onboarding="send" :disabled="analysing" @mousedown.prevent>
+      <img
+        class="sketch-icon"
+        src="@/assets/img/slingshot-white.svg"
+        alt="Envoyer le message"
+        draggable="false" />
     </button>
   </form>
 </template>
@@ -82,6 +90,12 @@ async function submit() {
   transition: gap 0.35s ease;
 }
 
+.message,
+button[type="submit"] {
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
 /* overflow: hidden pour que le padding de l'input ne l'empêche pas de se réduire à 0. */
 .message {
   flex: 1 1 0;
@@ -90,6 +104,10 @@ async function submit() {
   transition:
     flex-grow 0.35s cubic-bezier(0.65, 0, 0.35, 1),
     opacity 0.2s ease 0.15s;
+}
+
+.message input {
+  font-family: "Montserrat", system-ui, sans-serif;
 }
 
 .composer.collapsed {

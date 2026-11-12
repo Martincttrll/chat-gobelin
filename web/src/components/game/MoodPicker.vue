@@ -37,6 +37,7 @@ function onPressEnd() {
   <button
     type="button"
     class="mood-picker"
+    data-onboarding="mood"
     :class="{ compact }"
     :style="{ '--color': MOODS[mood].color ?? 'var(--text-color)' }"
     @pointerdown="onPressStart"

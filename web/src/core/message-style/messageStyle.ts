@@ -11,9 +11,6 @@ const SHORT_PAUSE = 500 // ms → espace normal
 const LONG_PAUSE = 3000 // ms → espace max
 const MAX_EXTRA_GAP = 2 // em
 
-const CONE_FROM = 0.8 // em, première lettre
-const CONE_TO = 2 // em, dernière lettre
-
 export function clamp01(value: number) {
   return Math.min(Math.max(value, 0), 1)
 }
@@ -37,11 +34,4 @@ export function getMessageStyle(mood: Mood, typingSpeed: number): CSSProperties 
     ...MOODS[mood].text,
     transform: `skewX(${speedToSkew(typingSpeed)}deg)`,
   }
-}
-
-export function getLetterStyle(mood: Mood, index: number, total: number): CSSProperties {
-  if (!MOODS[mood].cone) return {}
-
-  const progress = total > 1 ? index / (total - 1) : 0
-  return { fontSize: `${CONE_FROM + (CONE_TO - CONE_FROM) * progress}em` }
 }

@@ -56,7 +56,7 @@ async function submit() {
   <BlobBackground placement="center" />
   <main class="login">
     <h1>
-      <img src="@/assets/img/logo.svg" alt="Logo Catchup" />
+      <img class="sketch-icon" src="@/assets/img/logo.svg" alt="Logo Catchup" />
     </h1>
 
     <div class="form-wrapper">
@@ -127,7 +127,7 @@ async function submit() {
 
 h1 {
   position: absolute;
-  top: 160px;
+  top: 6rem;
   left: 0;
   right: 0;
   margin: 0;

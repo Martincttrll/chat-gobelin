@@ -43,6 +43,8 @@ import TrailScene from "@/core/trail/TrailScene";
 import { avatarUrl } from "@/core/utils/avatars";
 import { usePresence } from "@/core/game/usePresence";
 import type { Member } from "@/core/mentions/mentions";
+import OnboardingHint from "@/components/OnboardingHint.vue";
+import { isOnboardingDone, markOnboardingDone } from "@/core/onboarding/onboarding";
 
 const props = defineProps<{
   channelId: number;
@@ -83,6 +85,23 @@ const touching = computed(
 );
 const received = ref<{ message: Message; origin: Point; passTo?: string } | null>(null);
 const toast = ref("");
+
+// Onboarding de la première partie : chaque étape passe à la suivante quand on fait l'action.
+type OnboardingStep = "move" | "write" | "send" | "mood" | "aim";
+const ONBOARDING: Record<OnboardingStep, { text: string; target?: string; shape?: "circle" | "pill" }> = {
+  move: { text: "Clique n'importe où sur l'écran pour te déplacer", target: "me", shape: "circle" },
+  write: { text: "Écris ton message", target: "input", shape: "pill" },
+  send: { text: "Maintenant, clique ici pour envoyer ton message", target: "send", shape: "circle" },
+  mood: { text: "Maintiens ton doigt appuyé pour modifier les humeurs", target: "mood", shape: "pill" },
+  aim: { text: "Maintenant vise et envoie ton message 😉" },
+};
+const onboardingStep = ref<OnboardingStep | null>(isOnboardingDone("game") ? null : "move");
+
+function advanceOnboarding(from: OnboardingStep[], to: OnboardingStep | null) {
+  if (!onboardingStep.value || !from.includes(onboardingStep.value)) return;
+  onboardingStep.value = to;
+  if (!to) markOnboardingDone("game");
+}
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 // Ids de messages dont on a déjà enregistré l'arrêt au sol / le ramassage (le polling peut avoir du retard).
@@ -142,10 +161,12 @@ const pendingBallPx = computed(() => ({
 function onComposerSubmit(text: string, metadata: MessageMetadata) {
   pending.value = { text, metadata };
   phase.value = "aim";
+  advanceOnboarding(["write", "send"], "mood");
 }
 
 function setMood(mood: Mood) {
   if (pending.value) pending.value.metadata.mood = mood;
+  advanceOnboarding(["mood"], "aim");
 }
 
 function launch() {
@@ -169,6 +190,7 @@ function launch() {
 
   pending.value = null;
   phase.value = "move";
+  advanceOnboarding(["mood", "aim"], null);
 
   if (messageId !== undefined) {
     ball.messageId = messageId;
@@ -349,6 +371,7 @@ function moveStick(point: Point) {
 
 function onPointerDown(event: PointerEvent) {
   const point = pointerPx(event);
+  if (phase.value === "aim") advanceOnboarding(["mood"], "aim");
   if (controls.value === "joystick") {
     stick.value = { origin: point, tilt: { x: 0, y: 0 } };
     moveStick(point);
@@ -368,6 +391,7 @@ function onPointerMove(event: PointerEvent) {
 }
 
 function onPointerUp() {
+  if (phase.value === "move") advanceOnboarding(["move"], "write");
   stick.value = null;
   if (followingFinger.value) stopFollowing();
   if (aim.value) launch();
@@ -461,6 +485,8 @@ onUnmounted(() => {
       <g v-for="player in world.players" :key="player.id">
         <image
           v-if="avatarUrl(player.avatar)"
+          :data-onboarding="player.id === me.id ? 'me' : undefined"
+          filter="url(#sketch-avatar)"
           :href="avatarUrl(player.avatar)"
           :x="player.x * size.width - PLAYER_RADIUS"
           :y="player.y * size.height - PLAYER_RADIUS"
@@ -470,6 +496,7 @@ onUnmounted(() => {
           <circle
             class="player"
             filter="url(#sketch)"
+            :data-onboarding="player.id === me.id ? 'me' : undefined"
             :cx="player.x * size.width"
             :cy="player.y * size.height"
             :r="PLAYER_RADIUS" />
@@ -523,6 +550,7 @@ onUnmounted(() => {
       </template>
     </svg>
 
+    <!-- @input : événement natif de l'input du composer, qui remonte jusqu'à la racine de GameHud. -->
     <GameHud
       :aiming="phase === 'aim'"
       :passing="pending?.messageId !== undefined"
@@ -530,7 +558,15 @@ onUnmounted(() => {
       :touching="touching"
       :mood="pending?.metadata.mood ?? 'neutral'"
       @submit="onComposerSubmit"
-      @mood="setMood" />
+      @mood="setMood"
+      @input="advanceOnboarding(['write'], 'send')" />
+
+    <OnboardingHint
+      v-if="onboardingStep"
+      :key="onboardingStep"
+      :text="ONBOARDING[onboardingStep].text"
+      :target="ONBOARDING[onboardingStep].target"
+      :shape="ONBOARDING[onboardingStep].shape" />
 
     <Joystick v-if="stick" :origin="stick.origin" :tilt="stick.tilt" />
 

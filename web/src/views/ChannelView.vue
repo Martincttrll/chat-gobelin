@@ -72,9 +72,10 @@ onUnmounted(() => stopListening?.());
 
     <nav class="topbar">
       <RouterLink :to="{ name: 'home' }">
-        <img src="@/assets/img/back-arrow.svg" alt="Retour à l'accueil" />
+        <img class="sketch-icon" src="@/assets/img/back-arrow.svg" alt="Retour à l'accueil" />
       </RouterLink>
       <img
+        class="sketch-icon"
         @click="conversationOpen = true"
         src="@/assets/img/chat.svg"
         alt="Ouvrir la discussion" />

@@ -13,7 +13,7 @@ withDefaults(defineProps<{ title?: string; back?: RouteLocationRaw }>(), {
   <header>
     <div class="title">
       <RouterLink v-if="back" :to="back" class="back" aria-label="Retour">
-        <img src="@/assets/img/back-arrow.svg" alt="" />
+        <img class="sketch-icon" src="@/assets/img/back-arrow.svg" alt="" />
       </RouterLink>
       <h1>{{ title }}</h1>
     </div>

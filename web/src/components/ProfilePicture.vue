@@ -9,7 +9,7 @@ const initial = computed(() => props.username?.charAt(0).toUpperCase() ?? "?");
 </script>
 
 <template>
-  <img v-if="url" class="picture" :src="url" alt="" />
+  <img v-if="url" class="picture avatar" :src="url" alt="" />
   <span v-else class="picture monogram sketch" aria-hidden="true">{{ initial }}</span>
 </template>
 
@@ -19,6 +19,10 @@ const initial = computed(() => props.username?.charAt(0).toUpperCase() ?? "?");
   place-items: center;
   width: 100%;
   height: 100%;
+}
+
+.avatar {
+  filter: url(#sketch-avatar);
 }
 
 .monogram {

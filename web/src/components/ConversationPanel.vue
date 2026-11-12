@@ -216,6 +216,7 @@ h2 {
   --sketch-border: var(--bubble);
   max-width: 80%;
   margin: 0 0 0.75rem;
+  font-family: "Montserrat", system-ui, sans-serif;
   padding: 0.9rem 1.5rem;
   border-radius: 1.75rem;
   overflow-wrap: anywhere;
