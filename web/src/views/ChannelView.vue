@@ -18,7 +18,9 @@ const messages = ref<Message[]>([]);
 const systemMessages = ref<Message[]>([]);
 const loaded = ref(false);
 
-const channel = computed(() => userStore.channels.find((c) => c.name === route.params.name));
+const channel = computed(() =>
+  userStore.channels.find((c) => c.name === route.params.name),
+);
 
 async function loadMessages() {
   if (!channel.value) return;
@@ -72,12 +74,15 @@ onUnmounted(() => stopListening?.());
 
     <nav class="topbar">
       <RouterLink :to="{ name: 'home' }">
-        <img class="sketch-icon" src="@/assets/img/back-arrow.svg" alt="Retour à l'accueil" />
+        <img
+          class="sketch-icon"
+          src="@/assets/img/back-arrow.svg"
+          alt="Retour à l'accueil" />
       </RouterLink>
       <img
-        class="sketch-icon"
+        class="chat-icon"
         @click="conversationOpen = true"
-        src="@/assets/img/chat.svg"
+        src="@/assets/img/chat2.svg"
         alt="Ouvrir la discussion" />
     </nav>
 
@@ -112,5 +117,10 @@ onUnmounted(() => stopListening?.());
   padding: 0.4rem 0.9rem;
   --sketch-background: var(--background-color);
   text-decoration: none;
+}
+
+/* Le filtre Figma du fichier est retiré (pixelisé dans un <img> sur Safari) : on applique le nôtre. */
+.chat-icon {
+  filter: url(#sketch);
 }
 </style>

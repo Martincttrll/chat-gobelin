@@ -57,6 +57,7 @@ export interface Presence {
   x: number
   y: number
   left?: boolean // a quitté le jeu (sinon, le départ est détecté par /channel/connected)
+  sentAt?: number // Date.now() de l'envoi : l'accueil s'en sert pour savoir si le joueur est encore là
 }
 
 // Message tel que renvoyé par l'API.

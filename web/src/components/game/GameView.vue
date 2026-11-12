@@ -12,7 +12,7 @@ import gsap from "gsap";
 import { useUserStore } from "@/stores/user";
 import { editMessage, sendMessage } from "@/api/messages";
 import type { Message, MessageMetadata, Mood } from "@/types/api";
-import { moodColor } from "@/core/message-style/moods";
+import { moodColor, moodSecondaryColor } from "@/core/message-style/moods";
 import {
   MAX_PULL,
   MIN_TENSION,
@@ -42,6 +42,7 @@ import { stickTilt } from "@/core/game/joystick";
 import TrailScene from "@/core/trail/TrailScene";
 import { avatarUrl } from "@/core/utils/avatars";
 import { usePresence } from "@/core/game/usePresence";
+import { TRAIL_FADE, updateTrails, type Trail } from "@/core/game/trails";
 import type { Member } from "@/core/mentions/mentions";
 import OnboardingHint from "@/components/OnboardingHint.vue";
 import { isOnboardingDone, markOnboardingDone } from "@/core/onboarding/onboarding";
@@ -83,6 +84,31 @@ const stick = ref<{ origin: Point; tilt: Point } | null>(null);
 const touching = computed(
   () => followingFinger.value || aim.value !== null || stick.value !== null,
 );
+const trails = ref<Trail[]>([]);
+const trailTime = ref(0);
+
+// Segment par segment : chacun s'efface et s'amincit avec l'âge de son point, et sa couleur
+// oscille entre la couleur de l'humeur et sa variante secondaire (effet de pigment irrégulier).
+function trailSegments(trail: Trail) {
+  const color = moodColor(trail.metadata);
+  const secondary = moodSecondaryColor(trail.metadata);
+  return trail.points.slice(1).map((point, i) => {
+    const previous = trail.points[i]!;
+    const age = (trailTime.value - point.time) / TRAIL_FADE;
+    const mix = Math.round(50 + 50 * Math.sin(i * 0.25));
+    return {
+      key: point.time,
+      x1: previous.x * size.value.width,
+      y1: previous.y * size.value.height,
+      x2: point.x * size.value.width,
+      y2: point.y * size.value.height,
+      width: trail.width * (1 - age * 0.6),
+      opacity: 0.6 * (1 - age),
+      color: `color-mix(in srgb, ${color} ${mix}%, ${secondary})`,
+    };
+  });
+}
+
 const received = ref<{ message: Message; origin: Point; passTo?: string } | null>(null);
 const toast = ref("");
 
@@ -408,13 +434,15 @@ function toggleControls() {
   controls.value = controls.value === "drag" ? "joystick" : "drag";
 }
 
-function tick(_time: number, deltaMs: number) {
+function tick(time: number, deltaMs: number) {
   // Plafonné : après un changement d'onglet du navigateur, deltaMs peut valoir plusieurs secondes.
   const dt = Math.min(deltaMs / 1000, 0.05);
   if (stick.value && phase.value === "move") {
     pushPlayer(me, stick.value.tilt, dt, size.value);
   }
   stepWorld(world, dt, size.value).forEach(onCatch);
+  trailTime.value = time;
+  trails.value = updateTrails(trails.value, world.balls, time);
   for (const ball of world.balls) {
     if (ball.onGround && ball.throwerId === me.id) saveLanding(ball);
   }
@@ -515,15 +543,49 @@ onUnmounted(() => {
         </text>
       </g>
 
+      <defs>
+        <!-- Bords irréguliers et légèrement fondus : un premier pas vers l'aquarelle. -->
+        <!-- userSpaceOnUse : en objectBoundingBox, la zone du filtre suit la géométrie des lignes sans
+             leur épaisseur ; une traînée presque droite a une hauteur nulle et disparaît. -->
+        <filter
+          id="trail-paint"
+          filterUnits="userSpaceOnUse"
+          x="0"
+          y="0"
+          :width="size.width"
+          :height="size.height">
+          <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="3" result="noise" />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="8"
+            xChannelSelector="R"
+            yChannelSelector="G" />
+          <feGaussianBlur stdDeviation="1.5" />
+        </filter>
+      </defs>
+      <g class="trails" filter="url(#trail-paint)">
+        <template v-for="trail in trails" :key="trail.ballId">
+          <line
+            v-for="segment in trailSegments(trail)"
+            :key="segment.key"
+            :x1="segment.x1"
+            :y1="segment.y1"
+            :x2="segment.x2"
+            :y2="segment.y2"
+            :stroke-width="segment.width"
+            :style="{ stroke: segment.color, strokeOpacity: segment.opacity }" />
+        </template>
+      </g>
+
       <circle
         v-for="ball in world.balls"
         :key="ball.id"
         class="ball"
-        :class="{ ground: ball.onGround }"
         :cx="ball.x * size.width"
         :cy="ball.y * size.height"
         :r="ballRadius(ball.text)"
-        :style="{ fill: moodColor(ball.metadata) }" />
+        :style="{ fill: moodColor(ball.metadata), '--glow': moodSecondaryColor(ball.metadata) }" />
 
       <template v-if="phase === 'aim' && pending">
         <template v-if="aim">
@@ -546,7 +608,10 @@ onUnmounted(() => {
           :cx="pendingBallPx.x"
           :cy="pendingBallPx.y"
           :r="ballRadius(pending.text)"
-          :style="{ fill: moodColor(pending.metadata) }" />
+          :style="{
+            fill: moodColor(pending.metadata),
+            '--glow': moodSecondaryColor(pending.metadata),
+          }" />
       </template>
     </svg>
 
@@ -642,12 +707,9 @@ onUnmounted(() => {
   fill: var(--primary-color);
 }
 
+/* Même rendu que les boules de notification de l'accueil : rond crayonné, lueur secondaire. */
 .ball {
-  stroke: var(--text-color);
-}
-
-.ball.ground {
-  opacity: 0.6;
+  filter: url(#sketch) drop-shadow(0 0 0.3rem var(--glow));
 }
 
 .elastic {

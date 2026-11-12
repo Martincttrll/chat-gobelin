@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import gsap from "gsap";
 import type { Mood } from "@/types/api";
 import type { Point } from "@/core/game/physics";
@@ -16,6 +16,13 @@ const root = ref<HTMLElement>();
 // Clavier ouvert sur mobile, le repère des éléments fixed ne coïncide plus avec celui de
 // getBoundingClientRect (où sont mesurés le bouton et le doigt) : on mesure l'écart sur la roue.
 const offset = ref<Point>({ x: 0, y: 0 });
+
+// Le nom de l'humeur survolée : fixe, centré au-dessus de la plus haute pastille.
+const LABEL_GAP = 60; // px au-dessus du centre de la plus haute pastille
+const labelPosition = computed(() => ({
+  left: `${props.origin.x - offset.value.x}px`,
+  top: `${Math.min(...props.items.map((item) => item.y)) - offset.value.y - LABEL_GAP}px`,
+}));
 
 // Les humeurs sortent du bouton pour aller à leur place.
 onMounted(async () => {
@@ -47,10 +54,17 @@ onMounted(async () => {
         '--color': MOODS[item.mood].color ?? 'var(--text-color)',
       }">
       <span class="dot" />
-      <span v-if="item.mood === hovered" class="label">{{
-        MOODS[item.mood].label
-      }}</span>
     </div>
+
+    <span
+      v-if="hovered"
+      class="label"
+      :style="{
+        ...labelPosition,
+        color: MOODS[hovered].color ?? 'var(--text-color)',
+      }"
+      >{{ MOODS[hovered].label }}</span
+    >
   </div>
 </template>
 
@@ -69,7 +83,7 @@ onMounted(async () => {
   position: absolute;
   width: 36px;
   height: 36px;
-  margin: -24px 0 0 -24px;
+  margin: -18px 0 0 -18px;
 }
 
 .dot {
@@ -83,15 +97,14 @@ onMounted(async () => {
 }
 
 .active .dot {
-  scale: 1.3;
+  scale: 2;
 }
 
 .label {
   position: absolute;
-  bottom: calc(100% + 0.4rem);
-  left: 50%;
-  translate: -50% 0;
-  font-size: 0.75rem;
+  translate: -50% -100%;
+  font-size: 1.4rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 </style>

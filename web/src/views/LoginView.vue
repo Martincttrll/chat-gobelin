@@ -120,7 +120,10 @@ async function submit() {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: 100%;
   max-width: 320px;
   margin: 0 auto;
 }

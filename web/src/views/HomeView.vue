@@ -10,6 +10,7 @@ import NewChannelSheet from "@/components/NewChannelSheet.vue";
 import ProfilePicture from "@/components/ProfilePicture.vue";
 import OnboardingHint from "@/components/OnboardingHint.vue";
 import { isOnboardingDone, markOnboardingDone } from "@/core/onboarding/onboarding";
+import { channelsWithPlayers } from "@/core/game/presence";
 
 const userStore = useUserStore();
 
@@ -35,8 +36,25 @@ const visibleChannels = computed(() => {
   return userStore.channels.filter((channel) => normalize(channel.name).includes(query));
 });
 
+// On charge aussi ws-checkup (caché) : ses messages de présence disent où quelqu'un joue.
+const loadedChannels = computed(() => {
+  const system = userStore.systemChannel;
+  return system ? [...userStore.channels, system] : userStore.channels;
+});
+
+// Une présence vieillit sans nouvel événement : on réévalue régulièrement.
+const PLAYING_REFRESH = 5000; // ms
+const now = ref(Date.now());
+const clock = setInterval(() => (now.value = Date.now()), PLAYING_REFRESH);
+
+const playing = computed(() => {
+  const systemId = userStore.systemChannel?.id;
+  const presence = systemId === undefined ? [] : (messagesByChannel.value[systemId] ?? []);
+  return channelsWithPlayers(presence, userStore.me?.id, now.value);
+});
+
 async function loadMessages() {
-  const channels = userStore.channels;
+  const channels = loadedChannels.value;
   // allSettled : un channel en erreur (ex. « general » quand l'horloge du back écrit des metadata
   // invalides) ne doit pas vider la liste des autres.
   const results = await Promise.allSettled(channels.map((channel) => getMessages(channel.id)));
@@ -53,11 +71,11 @@ let stopListening: (() => void) | undefined;
 
 // /me est chargé de façon asynchrone : la liste des channels peut arriver après le montage.
 watch(
-  () => userStore.channels.length,
+  () => loadedChannels.value.length,
   () => {
     stopListening?.();
     loadMessages();
-    const ids = userStore.channels.map((channel) => channel.id);
+    const ids = loadedChannels.value.map((channel) => channel.id);
     if (ids.length === 0) return;
     stopListening = listenChannels(
       ids,
@@ -72,7 +90,10 @@ watch(
   { immediate: true },
 );
 
-onUnmounted(() => stopListening?.());
+onUnmounted(() => {
+  stopListening?.();
+  clearInterval(clock);
+});
 </script>
 
 <template>
@@ -99,7 +120,10 @@ onUnmounted(() => stopListening?.());
 
     <ul class="channels">
       <li v-for="channel in visibleChannels" :key="channel.id">
-        <ChannelItem :channel="channel" :messages="messagesByChannel[channel.id] ?? []" />
+        <ChannelItem
+          :channel="channel"
+          :messages="messagesByChannel[channel.id] ?? []"
+          :playing="playing.has(channel.id)" />
       </li>
     </ul>
 

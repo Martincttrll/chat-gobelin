@@ -6,7 +6,8 @@ import { useUserStore } from "@/stores/user";
 import { moodColor, moodSecondaryColor } from "@/core/message-style/moods";
 import { isVisible } from "@/api/messages";
 
-const props = defineProps<{ channel: Channel; messages: Message[] }>();
+// playing : quelqu'un est en train de jouer dans ce channel.
+const props = defineProps<{ channel: Channel; messages: Message[]; playing: boolean }>();
 
 const MAX_BALLS = 4;
 
@@ -38,7 +39,9 @@ const lastTime = computed(() => {
 
 <template>
   <RouterLink class="item" :to="{ name: 'channel', params: { name: channel.name } }">
-    <span class="avatar sketch">{{ channel.name.charAt(0).toUpperCase() }}</span>
+    <span class="avatar sketch">
+      <img v-if="playing" class="star sketch-icon" src="@/assets/img/star.svg" alt="Partie en cours" />
+    </span>
 
     <div class="info">
       <span class="name">{{ channel.name }}</span>
@@ -82,8 +85,10 @@ const lastTime = computed(() => {
   place-items: center;
   width: 3.25rem;
   height: 3.25rem;
-  font-size: 1.25rem;
-  font-weight: 600;
+}
+
+.star {
+  width: 1.5rem;
 }
 
 .info {
@@ -130,12 +135,24 @@ const lastTime = computed(() => {
   width: 1.9rem;
   height: 1.9rem;
   border-radius: 50%;
-  background: var(--color);
+  isolation: isolate;
+  /* Lueur hors du ::before filtré : la zone du filtre (#sketch, 20 % autour) la couperait en carré. */
   box-shadow: 0 0 0.8rem var(--glow);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 600;
   text-shadow: 0 0 3px rgb(0 0 0 / 0.5);
+}
+
+/* Rond crayonné sur un ::before : le chiffre du compteur reste net. */
+.ball::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--color);
+  filter: url(#sketch);
 }
 
 .ball + .ball {

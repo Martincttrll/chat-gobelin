@@ -44,7 +44,7 @@ export const MIN_TENSION = 0.15 // en dessous, le lâcher de la fronde est ignor
 export const PLAYER_SPEED = 220 // px/s
 const MIN_LAUNCH_SPEED = 400 // px/s, frappe lente et tension max
 const MAX_LAUNCH_SPEED = 1400 // px/s, frappe rapide et tension max
-const FRICTION = 1.2 // plus c'est grand, plus la boule ralentit vite
+const FRICTION = 0.85 // plus c'est grand, plus la boule ralentit vite
 const BOUNCE = 0.8 // vitesse conservée après un rebond
 const STOP_SPEED = 30 // px/s, en dessous la boule tombe au sol
 
