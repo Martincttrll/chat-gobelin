@@ -1,7 +1,8 @@
 import { useUserStore } from '@/stores/user'
 
-// Même hôte que la page : permet de tester depuis un téléphone sur le réseau local.
-export const API_URL = `http://${window.location.hostname}:4000`
+// En ligne : VITE_API_URL (variable d'environnement de Vercel). En local : même hôte que la page,
+// pour pouvoir tester depuis un téléphone sur le réseau local.
+export const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`
 
 // Espace des metadata de l'app. Le changer rendrait les metadata déjà enregistrées introuvables.
 export const NAMESPACE = 'type-swap'
