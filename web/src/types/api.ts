@@ -11,7 +11,7 @@ export interface Channel {
   metadata: NamespacedMetadata | null
 }
 
-// Réponse de POST /user et de POST /user/edit (sans channels).
+// Réponse de POST /user et de PUT /user (sans channels).
 export interface User {
   id: number
   username: string
@@ -37,11 +37,32 @@ export interface MessageMetadata {
   // Partagé entre tous les joueurs. Absent sur les messages d'avant la feature : considérés ramassés.
   pickedUp?: boolean
   ground?: { x: number; y: number } // où la boule s'est arrêtée (coordonnées 0–1 de la map)
+  launch?: { x: number; y: number; vx: number; vy: number } // départ et vitesse (map 0–1, par seconde)
+  // Contournement en attendant que le back relaie les événements des clients : la position d'un
+  // joueur passe par un message technique, jamais affiché (toShow: false).
+  toShow?: false
+  presence?: Presence
+  // Mention @nom : seul ce joueur peut ouvrir le message, les autres doivent lui faire une passe.
+  to?: { userId: number; name: string }
+  heldBy?: number // userId du joueur qui tient la boule (écran « Oups » ouvert)
+  passerId?: number // userId du dernier à avoir relancé ou reposé la boule (sinon : l'auteur)
+  roster?: { channel: string; members: number[] } // liste des membres d'un channel (message de ws-checkup)
+}
+
+export interface Presence {
+  channelId: number // channel de jeu où se trouve le joueur (le message, lui, est dans ws-checkup)
+  userId: number
+  name: string
+  avatar?: string
+  x: number
+  y: number
+  left?: boolean // a quitté le jeu (sinon, le départ est détecté par /channel/connected)
 }
 
 // Message tel que renvoyé par l'API.
 export interface ApiMessage {
   id: number
+  channel_id: number
   content: string
   user_id: number
   user: string

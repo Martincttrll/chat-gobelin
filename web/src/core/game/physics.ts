@@ -18,6 +18,7 @@ export interface Player extends Point {
   name: string
   avatar?: string // id d'un avatar de profile-pic ; sinon on affiche le monogramme
   target: Point | null
+  remote?: boolean // joueur d'un autre client : c'est son client qui décide de ses attrapes
 }
 
 export interface Ball extends Point {
@@ -25,8 +26,7 @@ export interface Ball extends Point {
   vx: number
   vy: number
   throwerId: string
-  // Faux tant que la boule n'a pas quitté le lanceur, pour qu'il ne la rattrape pas au départ.
-  armed: boolean
+  authorId: string // l'auteur ne ramasse jamais son message, même relancé par un autre
   onGround: boolean
   text: string
   metadata: MessageMetadata

@@ -3,7 +3,7 @@ import type { RouteLocationRaw } from "vue-router";
 import BlobBackground from "@/components/BlobBackground.vue";
 
 withDefaults(defineProps<{ title?: string; back?: RouteLocationRaw }>(), {
-  title: "Type Swap",
+  title: "Check up",
 });
 </script>
 

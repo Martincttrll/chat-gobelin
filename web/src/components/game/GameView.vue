@@ -29,6 +29,8 @@ import {
   createWorld,
   dropBall,
   dummyThrow,
+  placeAwayFromBalls,
+  remoteThrow,
   stepWorld,
   throwBall,
   type Catch,
@@ -39,18 +41,29 @@ import Joystick from "@/components/game/Joystick.vue";
 import { stickTilt } from "@/core/game/joystick";
 import TrailScene from "@/core/trail/TrailScene";
 import { avatarUrl } from "@/core/utils/avatars";
+import { usePresence } from "@/core/game/usePresence";
+import type { Member } from "@/core/mentions/mentions";
 
-const props = defineProps<{ channelId: number; messages: Message[] }>();
+const props = defineProps<{
+  channelId: number;
+  messages: Message[];
+  presenceMessages: Message[];
+}>();
 const userStore = useUserStore();
+const myUserId = userStore.me!.id;
 
 type Phase = "move" | "aim";
 // Deux schémas de contrôle à comparer (tests avec les créas).
 type Controls = "drag" | "joystick";
 
+// #debug dans l'URL (lu au chargement du jeu) : boutons de test et joueur Dummy.
+const debug = window.location.hash === "#debug";
+
 const world = reactive(
-  createWorld(userStore.me?.username ?? "Moi", userStore.profile.avatar),
+  createWorld(userStore.me?.username ?? "Moi", userStore.profile.avatar, debug),
 );
 const { me } = world;
+usePresence(world, props.channelId, () => props.presenceMessages);
 
 const svg = ref<SVGSVGElement>();
 const trailCanvas = ref<HTMLCanvasElement>();
@@ -58,7 +71,8 @@ const pendingBallEl = ref<SVGCircleElement>();
 
 const size = ref<Size>({ width: 1, height: 1 });
 const phase = ref<Phase>("move");
-const pending = ref<{ text: string; metadata: MessageMetadata } | null>(null);
+// messageId : passe d'un message déjà envoyé (adressé à quelqu'un d'autre), on le relance au lieu d'en poster un.
+const pending = ref<{ text: string; metadata: MessageMetadata; messageId?: number } | null>(null);
 const aim = ref<{ start: Point; current: Point } | null>(null);
 const followingFinger = ref(false);
 const controls = ref<Controls>("joystick");
@@ -67,15 +81,36 @@ const stick = ref<{ origin: Point; tilt: Point } | null>(null);
 const touching = computed(
   () => followingFinger.value || aim.value !== null || stick.value !== null,
 );
-const received = ref<{ message: Message; origin: Point } | null>(null);
+const received = ref<{ message: Message; origin: Point; passTo?: string } | null>(null);
 const toast = ref("");
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 // Ids de messages dont on a déjà enregistré l'arrêt au sol / le ramassage (le polling peut avoir du retard).
 const landed = new Set<number>();
 const picked = new Set<number>();
+// Dernier lancer vu pour chaque message : une passe change le lancer d'un message existant.
+const launches = new Map<number, string>();
+// Boule attrapée alors qu'elle était adressée à un autre : on la tient jusqu'à la passe ou au dépôt.
+let holding: Ball | null = null;
 // Pas de ref() : Vue envelopperait les objets Three dans des proxys réactifs.
 let trailScene: TrailScene | undefined;
+
+function playerId(userId: number) {
+  return userId === myUserId ? me.id : `user-${userId}`;
+}
+
+// Destinataires possibles d'une mention : l'API n'expose pas les membres d'un channel,
+// on prend les auteurs de messages et les joueurs déjà venus sur la map.
+const members = computed<Member[]>(() => {
+  const names = new Map<number, string>();
+  for (const message of props.messages) names.set(message.user_id, message.user);
+  for (const message of props.presenceMessages) {
+    const presence = message.metadata?.presence;
+    if (presence?.channelId === props.channelId) names.set(presence.userId, presence.name);
+  }
+  names.delete(myUserId);
+  return [...names].map(([userId, name]) => ({ userId, name }));
+});
 
 function toPx(point: Point): Point {
   return { x: point.x * size.value.width, y: point.y * size.value.height };
@@ -118,9 +153,33 @@ function launch() {
   aim.value = null;
   if (!pending.value || tension < MIN_TENSION) return;
 
-  const { text } = pending.value;
-  const metadata = { ...pending.value.metadata, pickedUp: false };
+  const { text, messageId } = pending.value;
+  const metadata: MessageMetadata = { ...pending.value.metadata, pickedUp: false };
+  if (messageId !== undefined) {
+    Object.assign(metadata, { ground: undefined, heldBy: undefined, passerId: myUserId });
+  }
   const ball = throwBall(world, me, text, metadata, { x: -offset.x, y: -offset.y }, tension);
+  // Les autres clients rejouent le lancer : vitesse en fraction de map/s, leur écran n'a pas la même taille.
+  metadata.launch = {
+    x: ball.x,
+    y: ball.y,
+    vx: ball.vx / size.value.width,
+    vy: ball.vy / size.value.height,
+  };
+
+  pending.value = null;
+  phase.value = "move";
+
+  if (messageId !== undefined) {
+    ball.messageId = messageId;
+    ball.authorId = holding!.authorId;
+    ball.throwerName = holding!.throwerName;
+    holding = null;
+    landed.delete(messageId);
+    editMessage(messageId, "", metadata).catch(() => showToast("La passe n'a pas pu être enregistrée."));
+    return;
+  }
+
   sendMessage(props.channelId, text, metadata)
     .then((message) => {
       ball.messageId = message.id;
@@ -130,9 +189,6 @@ function launch() {
     .catch(() => {
       showToast("Le message n'a pas pu être enregistré.");
     });
-
-  pending.value = null;
-  phase.value = "move";
 }
 
 function saveLanding(ball: Ball) {
@@ -140,6 +196,45 @@ function saveLanding(ball: Ball) {
   landed.add(ball.messageId);
   ball.metadata = { ...ball.metadata, ground: { x: ball.x, y: ball.y } };
   editMessage(ball.messageId, "", ball.metadata).catch(() => landed.delete(ball.messageId!));
+}
+
+function hold(ball: Ball) {
+  holding = ball;
+  if (ball.messageId === undefined) return;
+  // ground : là où on l'a attrapée, si on quitte l'app sans la reposer ni la passer.
+  ball.metadata = { ...ball.metadata, heldBy: myUserId, ground: { x: me.x, y: me.y } };
+  editMessage(ball.messageId, "", ball.metadata).catch(() => {});
+}
+
+// Fermé sans passe : la boule retombe à nos pieds, et on ne peut pas la reprendre.
+function dropHeld() {
+  const ball = holding!;
+  holding = null;
+  Object.assign(ball, { x: me.x, y: me.y, vx: 0, vy: 0, onGround: true, throwerId: me.id });
+  ball.metadata = {
+    ...ball.metadata,
+    ground: { x: me.x, y: me.y },
+    heldBy: undefined,
+    passerId: myUserId,
+  };
+  world.balls.push(ball);
+  if (ball.messageId === undefined) return;
+  landed.add(ball.messageId);
+  editMessage(ball.messageId, "", ball.metadata).catch(() => {
+    showToast("La boule n'a pas pu être reposée.");
+  });
+}
+
+function closeReceived() {
+  received.value = null;
+  if (holding) dropHeld();
+}
+
+function startPass() {
+  received.value = null;
+  const { text, metadata, messageId } = holding!;
+  pending.value = { text, metadata, messageId };
+  phase.value = "aim";
 }
 
 function savePickup(ball: Ball) {
@@ -151,32 +246,65 @@ function savePickup(ball: Ball) {
   });
 }
 
-// Synchronise les boules au sol avec l'API : celles des autres apparaissent, celles ramassées ailleurs disparaissent.
+// Synchronise les boules avec l'API : lancers et passes des autres, boules au sol, tenues ou ramassées ailleurs.
 watch(
   () => props.messages,
-  (messages) => {
+  (messages, previous) => {
     for (const message of messages) {
-      const onMap = world.balls.find((ball) => ball.messageId === message.id);
-      const { pickedUp, ground } = message.metadata ?? {};
+      const { pickedUp, ground, launch, heldBy, passerId } = message.metadata ?? {};
+      const launchKey = launch ? `${launch.x},${launch.y},${launch.vx},${launch.vy}` : "";
+      const newLaunch = launchKey !== "" && launches.get(message.id) !== launchKey;
+      launches.set(message.id, launchKey);
 
-      if (pickedUp === false && ground && !onMap && !picked.has(message.id)) {
-        const mine = message.user_id === userStore.me?.id;
-        dropBall(world, message, mine ? me.id : `user-${message.user_id}`);
-        landed.add(message.id);
-      } else if (pickedUp && onMap) {
+      const onMap = world.balls.some((ball) => ball.messageId === message.id);
+      const removeFromMap = () => {
         world.balls = world.balls.filter((ball) => ball.messageId !== message.id);
+      };
+      const throwerUserId = passerId ?? message.user_id;
+      const drop = () => {
+        if (onMap || picked.has(message.id)) return;
+        dropBall(world, message, playerId(throwerUserId), playerId(message.user_id));
+        landed.add(message.id);
+      };
+
+      if (pickedUp !== false) {
+        if (onMap) removeFromMap();
+      } else if (!previous) {
+        // Premier passage : les lancers en cours sont déjà finis. Une boule tenue (son joueur a pu
+        // quitter l'app sans la reposer) est posée là où elle a été attrapée.
+        if (ground) drop();
+      } else if (heldBy !== undefined) {
+        if (heldBy !== myUserId) removeFromMap();
+      } else if (newLaunch && !ground && throwerUserId !== myUserId) {
+        removeFromMap();
+        remoteThrow(world, message, playerId(throwerUserId), playerId(message.user_id), size.value);
+      } else if (ground) {
+        drop();
       }
     }
   },
   { immediate: true },
 );
+// Après le premier passage du watch : les boules au sol sont posées.
+placeAwayFromBalls(world);
 
 function onCatch({ ball, catcher, thrower }: Catch) {
-  savePickup(ball);
+  // Un message déjà ouvert ou une boule déjà en main : on ne ramasse rien d'autre.
+  if (catcher.id === me.id && (received.value || holding)) {
+    world.balls.push(ball);
+    return;
+  }
+
+  const to = ball.metadata.to;
+  const wrongTarget = catcher.id === me.id && to !== undefined && to.userId !== myUserId;
+  if (wrongTarget) hold(ball);
+  else savePickup(ball);
+
   if (catcher.id === me.id) {
     const now = new Date().toISOString();
     const message: Message = {
       id: ball.id,
+      channel_id: props.channelId,
       content: ball.text,
       user: thrower?.name ?? ball.throwerName ?? "?",
       user_id: 0,
@@ -185,7 +313,7 @@ function onCatch({ ball, catcher, thrower }: Catch) {
       posted_at: now,
       metadata: ball.metadata,
     };
-    received.value = { message, origin: { ...mePx.value } };
+    received.value = { message, origin: { ...mePx.value }, passTo: wrongTarget ? to.name : undefined };
   } else {
     showToast(
       `${catcher.name} a attrapé ${ball.throwerId === me.id ? "ton" : "un"} message`,
@@ -284,6 +412,11 @@ watch(phase, async (value) => {
 let resizeObserver: ResizeObserver;
 
 onMounted(() => {
+  // Taille réelle avant la première frame : avec la taille par défaut (1×1 px), toutes les boules
+  // au sol « touchent » le joueur et sont ramassées d'un coup à l'arrivée.
+  const rect = svg.value!.getBoundingClientRect();
+  size.value = { width: rect.width, height: rect.height };
+
   resizeObserver = new ResizeObserver(([entry]) => {
     size.value = {
       width: entry!.contentRect.width,
@@ -299,6 +432,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (holding) dropHeld();
   resizeObserver.disconnect();
   gsap.ticker.remove(tick);
   clearTimeout(toastTimer);
@@ -335,6 +469,7 @@ onUnmounted(() => {
         <template v-else>
           <circle
             class="player"
+            filter="url(#sketch)"
             :cx="player.x * size.width"
             :cy="player.y * size.height"
             :r="PLAYER_RADIUS" />
@@ -390,6 +525,8 @@ onUnmounted(() => {
 
     <GameHud
       :aiming="phase === 'aim'"
+      :passing="pending?.messageId !== undefined"
+      :members="members"
       :touching="touching"
       :mood="pending?.metadata.mood ?? 'neutral'"
       @submit="onComposerSubmit"
@@ -397,7 +534,7 @@ onUnmounted(() => {
 
     <Joystick v-if="stick" :origin="stick.origin" :tilt="stick.tilt" />
 
-    <div class="debug">
+    <div v-if="debug" class="debug">
       <button @click="toggleControls">
         Contrôles : {{ controls === "drag" ? "Drag" : "Joystick" }}
       </button>
@@ -411,7 +548,9 @@ onUnmounted(() => {
       :key="received.message.id"
       :message="received.message"
       :origin="received.origin"
-      @close="received = null" />
+      :pass-to="received.passTo"
+      @close="closeReceived"
+      @resend="startPass" />
   </div>
 </template>
 

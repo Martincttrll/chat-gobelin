@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
-import { getMessages } from "@/api/messages";
+import { applyMessageEvent, getMessages, isVisible } from "@/api/messages";
+import { listenChannels } from "@/api/socket";
 import type { Message } from "@/types/api";
 import BaseLayout from "@/layouts/BaseLayout.vue";
 import GameView from "@/components/game/GameView.vue";
@@ -13,39 +14,61 @@ const userStore = useUserStore();
 
 const conversationOpen = ref(false);
 const messages = ref<Message[]>([]);
+// Messages du channel technique (ws-checkup) : présence des joueurs de tous les channels.
+const systemMessages = ref<Message[]>([]);
+const loaded = ref(false);
 
-const channel = computed(() =>
-  userStore.me?.channels.find((c) => c.name === route.params.name),
-);
+const channel = computed(() => userStore.channels.find((c) => c.name === route.params.name));
 
 async function loadMessages() {
   if (!channel.value) return;
-  messages.value = await getMessages(channel.value.id);
+  const systemId = userStore.systemChannel?.id;
+  const [channelMessages, presence] = await Promise.all([
+    getMessages(channel.value.id),
+    systemId ? getMessages(systemId) : [],
+  ]);
+  messages.value = channelMessages;
+  systemMessages.value = presence;
+  loaded.value = true;
 }
+
+let stopListening: (() => void) | undefined;
 
 // /me est chargé de façon asynchrone au démarrage : le channel peut arriver après le montage.
 watch(
   () => channel.value?.id,
   (id) => {
+    stopListening?.();
     if (!id) return;
     loadMessages();
+    const systemId = userStore.systemChannel?.id;
+    stopListening = listenChannels(
+      systemId ? [id, systemId] : [id],
+      (event) => {
+        if (event.channel_id === systemId) {
+          systemMessages.value = applyMessageEvent(systemMessages.value, event);
+        } else {
+          messages.value = applyMessageEvent(messages.value, event);
+        }
+      },
+      loadMessages,
+    );
   },
   { immediate: true },
 );
 
-// Pas encore de WebSocket côté API : on recharge les messages toutes les 3 s.
-let timer: ReturnType<typeof setInterval>;
-onMounted(() => {
-  timer = setInterval(loadMessages, 3000);
-});
-onUnmounted(() => {
-  clearInterval(timer);
-});
+onUnmounted(() => stopListening?.());
 </script>
 
 <template>
   <template v-if="channel">
-    <GameView :channel-id="channel.id" :messages="messages" />
+    <!-- Monté après le premier chargement : les messages déjà là ne sont pas pris pour de nouveaux lancers. -->
+    <GameView
+      v-if="loaded"
+      :key="channel.id"
+      :channel-id="channel.id"
+      :messages="messages"
+      :presence-messages="systemMessages" />
 
     <nav class="topbar">
       <RouterLink :to="{ name: 'home' }">
@@ -60,7 +83,7 @@ onUnmounted(() => {
     <Transition name="conversation" :duration="{ enter: 300, leave: 200 }">
       <ConversationPanel
         v-if="conversationOpen"
-        :messages="messages"
+        :messages="messages.filter(isVisible)"
         @close="conversationOpen = false" />
     </Transition>
   </template>

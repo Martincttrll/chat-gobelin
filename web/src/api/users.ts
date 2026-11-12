@@ -25,5 +25,5 @@ export function getCurrentUser(): Promise<Me> {
 
 // Remplace les metadata de l'utilisateur courant dans notre namespace.
 export function editMyMetadata(metadata: object): Promise<User> {
-  return request<User>('POST', '/user/edit', { metadata })
+  return request<User>('PUT', '/user', { metadata })
 }

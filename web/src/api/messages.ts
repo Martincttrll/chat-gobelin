@@ -1,4 +1,5 @@
 import { NAMESPACE, request } from './client'
+import type { SocketEvent } from './socket'
 import type {
   ApiMessage,
   ApiMessageList,
@@ -41,4 +42,31 @@ export async function editMessage(
 ): Promise<Message> {
   const body: EditMessagePayload = { id, content: text, metadata }
   return toMessage(await request<ApiMessage>('PUT', '/channel/message', body))
+}
+
+export function isVisible(message: Message): boolean {
+  return message.metadata?.toShow !== false
+}
+
+// Applique un événement du socket à la liste des messages d'un channel (renvoie une nouvelle liste).
+export function applyMessageEvent(messages: Message[], event: SocketEvent): Message[] {
+  if (event.operation === 'message.created') {
+    const created = toMessage(event as unknown as ApiMessage)
+    if (messages.some((message) => message.id === created.id)) return messages
+    return [...messages, created]
+  }
+  if (event.operation === 'message.edited') {
+    // Le back ne renvoie que id, channel_id, content et metadata : on garde le reste.
+    const edited = toMessage(event as unknown as ApiMessage)
+    // Message de présence plus ancien que les 100 messages chargés : ses metadata se suffisent.
+    if (!isVisible(edited) && !messages.some((message) => message.id === edited.id)) {
+      return [...messages, edited]
+    }
+    return messages.map((message) =>
+      message.id === edited.id
+        ? { ...message, content: edited.content || message.content, metadata: edited.metadata }
+        : message,
+    )
+  }
+  return messages
 }

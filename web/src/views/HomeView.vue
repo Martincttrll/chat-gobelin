@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { onUnmounted, ref, watch } from "vue";
 import { useUserStore } from "@/stores/user";
-import { getMessages } from "@/api/messages";
+import { applyMessageEvent, getMessages } from "@/api/messages";
+import { listenChannels } from "@/api/socket";
 import type { Message } from "@/types/api";
 import BaseLayout from "@/layouts/BaseLayout.vue";
 import ChannelItem from "@/components/ChannelItem.vue";
@@ -14,7 +15,7 @@ const sheetOpen = ref(false);
 const messagesByChannel = ref<Record<number, Message[]>>({});
 
 async function loadMessages() {
-  const channels = userStore.me?.channels ?? [];
+  const channels = userStore.channels;
   // allSettled : un channel en erreur (ex. « general » quand l'horloge du back écrit des metadata
   // invalides) ne doit pas vider la liste des autres.
   const results = await Promise.allSettled(channels.map((channel) => getMessages(channel.id)));
@@ -27,17 +28,30 @@ async function loadMessages() {
   );
 }
 
-// /me est chargé de façon asynchrone : la liste des channels peut arriver après le montage.
-watch(() => userStore.me?.channels.length, loadMessages, { immediate: true });
+let stopListening: (() => void) | undefined;
 
-// Pas encore de WebSocket côté API : on recharge les messages toutes les 3 s.
-let timer: ReturnType<typeof setInterval>;
-onMounted(() => {
-  timer = setInterval(loadMessages, 3000);
-});
-onUnmounted(() => {
-  clearInterval(timer);
-});
+// /me est chargé de façon asynchrone : la liste des channels peut arriver après le montage.
+watch(
+  () => userStore.channels.length,
+  () => {
+    stopListening?.();
+    loadMessages();
+    const ids = userStore.channels.map((channel) => channel.id);
+    if (ids.length === 0) return;
+    stopListening = listenChannels(
+      ids,
+      (event) => {
+        const id = event.channel_id as number | undefined;
+        if (id === undefined || !messagesByChannel.value[id]) return;
+        messagesByChannel.value[id] = applyMessageEvent(messagesByChannel.value[id], event);
+      },
+      loadMessages,
+    );
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => stopListening?.());
 </script>
 
 <template>
@@ -49,13 +63,13 @@ onUnmounted(() => {
       </RouterLink>
     </template>
 
-    <p v-if="userStore.me?.channels.length === 0" class="empty">
+    <p v-if="userStore.me && userStore.channels.length === 0" class="empty">
       Tu n'as encore rejoint aucun channel.<br />
       Touche le bouton en bas à droite pour en créer ou en rejoindre un.
     </p>
 
     <ul class="channels">
-      <li v-for="channel in userStore.me?.channels" :key="channel.id">
+      <li v-for="channel in userStore.channels" :key="channel.id">
         <ChannelItem :channel="channel" :messages="messagesByChannel[channel.id] ?? []" />
       </li>
     </ul>

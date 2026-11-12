@@ -4,6 +4,7 @@ import { RouterLink } from "vue-router";
 import type { Channel, Message } from "@/types/api";
 import { useUserStore } from "@/stores/user";
 import { moodColor, moodSecondaryColor } from "@/core/message-style/moods";
+import { isVisible } from "@/api/messages";
 
 const props = defineProps<{ channel: Channel; messages: Message[] }>();
 
@@ -11,11 +12,12 @@ const MAX_BALLS = 4;
 
 const userStore = useUserStore();
 
-const lastMessage = computed(() => props.messages.at(-1));
+const visible = computed(() => props.messages.filter(isVisible));
+const lastMessage = computed(() => visible.value.at(-1));
 
 // Messages des autres encore au sol (pas encore ramassés).
 const unread = computed(() =>
-  props.messages.filter(
+  visible.value.filter(
     (message) => message.user_id !== userStore.me?.id && message.metadata?.pickedUp === false,
   ),
 );
@@ -36,7 +38,7 @@ const lastTime = computed(() => {
 
 <template>
   <RouterLink class="item" :to="{ name: 'channel', params: { name: channel.name } }">
-    <span class="avatar">{{ channel.name.charAt(0).toUpperCase() }}</span>
+    <span class="avatar sketch">{{ channel.name.charAt(0).toUpperCase() }}</span>
 
     <div class="info">
       <span class="name">{{ channel.name }}</span>
@@ -80,8 +82,6 @@ const lastTime = computed(() => {
   place-items: center;
   width: 3.25rem;
   height: 3.25rem;
-  border-radius: 50%;
-  border: 1px solid var(--text-color);
   font-size: 1.25rem;
   font-weight: 600;
 }

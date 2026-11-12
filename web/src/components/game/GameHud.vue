@@ -3,8 +3,16 @@ import { onUnmounted, ref, watch } from "vue";
 import type { MessageMetadata, Mood } from "@/types/api";
 import MessageComposer from "@/components/game/MessageComposer.vue";
 import MoodPicker from "@/components/game/MoodPicker.vue";
+import type { Member } from "@/core/mentions/mentions";
 
-const props = defineProps<{ aiming: boolean; touching: boolean; mood: Mood }>();
+// passing : on relance le message d'un autre, son mood n'est pas modifiable.
+const props = defineProps<{
+  aiming: boolean;
+  passing: boolean;
+  touching: boolean;
+  mood: Mood;
+  members: Member[];
+}>();
 const emit = defineEmits<{
   submit: [text: string, metadata: MessageMetadata];
   mood: [mood: Mood];
@@ -39,9 +47,10 @@ onUnmounted(() => {
       v-if="!aiming"
       class="composer"
       :collapsed="collapsed"
+      :members="members"
       @submit="(text, metadata) => emit('submit', text, metadata)" />
 
-    <MoodPicker v-else :mood="mood" :compact="collapsed" @pick="emit('mood', $event)" />
+    <MoodPicker v-else-if="!passing" :mood="mood" :compact="collapsed" @pick="emit('mood', $event)" />
   </div>
 </template>
 

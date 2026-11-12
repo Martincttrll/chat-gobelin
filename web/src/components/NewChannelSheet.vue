@@ -1,36 +1,63 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { nextTick, ref, watch } from "vue";
 import { useUserStore } from "@/stores/user";
 import { createChannel, enterChannel } from "@/api/channels";
+import {
+  MAX_MEMBERS,
+  addToRoster,
+  createRoster,
+  estimateMembers,
+  findRoster,
+  isFull,
+} from "@/api/roster";
 
 const emit = defineEmits<{ close: [] }>();
 
 const userStore = useUserStore();
 
+const action = ref<"create" | "join">();
 const channelName = ref("");
 const error = ref("");
+const input = ref<HTMLInputElement>();
 
-async function submit(action: "create" | "join") {
+watch(action, () => nextTick(() => input.value?.focus()));
+
+async function submit() {
   error.value = "";
   const name = channelName.value.trim();
 
   // L'API ajoute le channel en double si on le rejoint alors qu'on en est déjà membre.
   if (
-    action === "join" &&
+    action.value === "join" &&
     userStore.me?.channels.some((c) => c.name === name)
   ) {
     error.value = "Tu fais déjà partie de ce channel.";
     return;
   }
 
+  const myId = userStore.me!.id;
   try {
-    if (action === "create") await createChannel(name);
-    else await enterChannel(name);
+    if (action.value === "create") {
+      await createChannel(name);
+      await createRoster(name, [myId]).catch(() => {});
+    } else {
+      // Vérifié avant de rejoindre : le back n'a pas de route pour quitter un channel.
+      const roster = await findRoster(name);
+      if (isFull(roster, myId)) {
+        error.value = `Ce groupe est complet (${MAX_MEMBERS} personnes max).`;
+        return;
+      }
+      const channel = await enterChannel(name);
+      await (roster
+        ? addToRoster(roster, myId)
+        : estimateMembers(channel.id).then((ids) => createRoster(name, [...new Set([...ids, myId])]))
+      ).catch(() => {});
+    }
     await userStore.fetchMe();
     emit("close");
   } catch {
     error.value =
-      action === "create"
+      action.value === "create"
         ? "Impossible de créer le channel."
         : "Ce channel n'existe pas.";
   }
@@ -41,22 +68,23 @@ async function submit(action: "create" | "join") {
   <div class="sheet-root">
     <div class="backdrop" @click="emit('close')" />
 
-    <form class="sheet" @submit.prevent="submit('join')">
+    <div v-if="!action" class="sheet">
       <h2>Nouvelle discussion</h2>
-      <span class="field">
-        <input v-model="channelName" placeholder="Nom du channel" required />
-      </span>
-      <p v-if="error" class="error">{{ error }}</p>
-
       <div class="actions">
-        <button type="submit" class="filled">Rejoindre</button>
-        <button
-          type="button"
-          :disabled="!channelName.trim()"
-          @click="submit('create')">
-          Créer
-        </button>
+        <button type="button" class="filled" @click="action = 'join'">Rejoindre</button>
+        <button type="button" @click="action = 'create'">Créer</button>
       </div>
+    </div>
+
+    <form v-else class="sheet" @submit.prevent="submit">
+      <h2>{{ action === "join" ? "Rejoindre un channel" : "Créer un channel" }}</h2>
+      <div class="actions">
+        <span class="field">
+          <input v-model="channelName" placeholder="Nom du channel" required ref="input" />
+        </span>
+        <button type="submit" class="filled ok" :disabled="!channelName.trim()">OK</button>
+      </div>
+      <p v-if="error" class="error">{{ error }}</p>
     </form>
   </div>
 </template>
@@ -120,8 +148,12 @@ h2 {
   gap: 0.5rem;
 }
 
-.actions button {
+.actions > * {
   flex: 1;
+}
+
+.actions > .ok {
+  flex: none;
 }
 
 .error {

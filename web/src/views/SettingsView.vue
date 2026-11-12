@@ -19,7 +19,7 @@ async function apply() {
   error.value = "";
   saving.value = true;
   try {
-    // /user/edit remplace tout notre namespace : on renvoie les autres champs tels quels.
+    // PUT /user remplace tout notre namespace : on renvoie les autres champs tels quels.
     await editMyMetadata({ ...userStore.profile, avatar: selected.value });
     await userStore.fetchMe();
     router.push({ name: "home" });
