@@ -87,24 +87,21 @@ const touching = computed(
 const trails = ref<Trail[]>([]);
 const trailTime = ref(0);
 
-// Segment par segment : chacun s'efface et s'amincit avec l'âge de son point, et sa couleur
-// oscille entre la couleur de l'humeur et sa variante secondaire (effet de pigment irrégulier).
+// Segment par segment : chacun s'efface et s'amincit avec l'âge de son point.
 function trailSegments(trail: Trail) {
   const color = moodColor(trail.metadata);
-  const secondary = moodSecondaryColor(trail.metadata);
   return trail.points.slice(1).map((point, i) => {
     const previous = trail.points[i]!;
-    const age = (trailTime.value - point.time) / TRAIL_FADE;
-    const mix = Math.round(50 + 50 * Math.sin(i * 0.25));
+    const life = 1 - (trailTime.value - point.time) / TRAIL_FADE; // 1 = tout neuf, 0 = effacé
     return {
       key: point.time,
       x1: previous.x * size.value.width,
       y1: previous.y * size.value.height,
       x2: point.x * size.value.width,
       y2: point.y * size.value.height,
-      width: trail.width * (1 - age * 0.6),
-      opacity: 0.6 * (1 - age),
-      color: `color-mix(in srgb, ${color} ${mix}%, ${secondary})`,
+      width: trail.width * (0.3 + 0.7 * life),
+      opacity: 0.5 * life,
+      color,
     };
   });
 }
@@ -550,23 +547,16 @@ onUnmounted(() => {
         <!-- userSpaceOnUse : en objectBoundingBox, la zone du filtre suit la géométrie des lignes sans
              leur épaisseur ; une traînée presque droite a une hauteur nulle et disparaît. -->
         <filter
-          id="trail-paint"
+          id="trail-glow"
           filterUnits="userSpaceOnUse"
           x="0"
           y="0"
           :width="size.width"
           :height="size.height">
-          <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="3" result="noise" />
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="noise"
-            scale="8"
-            xChannelSelector="R"
-            yChannelSelector="G" />
-          <feGaussianBlur stdDeviation="1.5" />
+          <feGaussianBlur stdDeviation="5" />
         </filter>
       </defs>
-      <g class="trails" filter="url(#trail-paint)">
+      <g class="trails" filter="url(#trail-glow)">
         <template v-for="trail in trails" :key="trail.ballId">
           <line
             v-for="segment in trailSegments(trail)"
@@ -576,6 +566,7 @@ onUnmounted(() => {
             :x2="segment.x2"
             :y2="segment.y2"
             :stroke-width="segment.width"
+            stroke-linecap="round"
             :style="{ stroke: segment.color, strokeOpacity: segment.opacity }" />
         </template>
       </g>

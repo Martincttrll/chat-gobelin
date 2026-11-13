@@ -1,9 +1,9 @@
 import type { MessageMetadata } from '@/types/api'
 import { ballRadius, type Ball } from './physics'
 
-// Traînée provisoire en SVG, pour un premier rendu (la version aquarelle Three.js est dans core/trail).
+// Traînée provisoire en SVG (lueur qui suit la boule), pour un premier rendu (la version aquarelle Three.js est dans core/trail).
 // Valeurs provisoires.
-export const TRAIL_FADE = 2.5 // s avant qu'un point de la traînée disparaisse
+export const TRAIL_FADE = 0.7 // s avant qu'un point de la traînée disparaisse
 const MIN_STEP = 0.003 // déplacement minimal (map 0–1) entre deux points
 
 export interface TrailPoint {
@@ -37,5 +37,6 @@ export function updateTrails(trails: Trail[], balls: Ball[], time: number): Trai
 
   return trails
     .map((trail) => ({ ...trail, points: trail.points.filter((p) => time - p.time < TRAIL_FADE) }))
-    .filter((trail) => trail.points.length > 1)
+    // Une traînée qui commence n'a qu'un point : on la garde, sinon elle ne grandit jamais.
+    .filter((trail) => trail.points.length > 0)
 }
