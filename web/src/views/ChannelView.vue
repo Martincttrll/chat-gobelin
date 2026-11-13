@@ -82,8 +82,9 @@ onUnmounted(() => stopListening?.());
       <img
         class="chat-icon"
         @click="conversationOpen = true"
-        src="@/assets/img/chat2.svg"
-        alt="Ouvrir la discussion" />
+        src="@/assets/img/chat3.svg"
+        alt="Ouvrir la discussion"
+        width="75" />
     </nav>
 
     <Transition name="conversation" :duration="{ enter: 300, leave: 200 }">
