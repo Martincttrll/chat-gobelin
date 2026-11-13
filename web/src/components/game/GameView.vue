@@ -349,16 +349,18 @@ function onCatch({ ball, catcher, thrower }: Catch) {
   else savePickup(ball);
 
   if (catcher.id === me.id) {
+    // Le message de l'API donne le vrai auteur (pas celui qui a fait la passe) et l'heure d'envoi.
+    const sent = props.messages.find((m) => m.id === ball.messageId);
     const now = new Date().toISOString();
     const message: Message = {
       id: ball.id,
       channel_id: props.channelId,
       content: ball.text,
-      user: thrower?.name ?? ball.throwerName ?? "?",
-      user_id: 0,
+      user: sent?.user ?? thrower?.name ?? ball.throwerName ?? "?",
+      user_id: sent?.user_id ?? 0,
       anonymous: false,
-      creation_date: now,
-      posted_at: now,
+      creation_date: sent?.creation_date ?? now,
+      posted_at: sent?.posted_at ?? now,
       metadata: ball.metadata,
     };
     received.value = { message, origin: { ...mePx.value }, passTo: wrongTarget ? to.name : undefined };

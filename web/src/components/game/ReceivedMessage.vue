@@ -25,6 +25,11 @@ const mood = props.message.metadata?.mood ?? "neutral";
 const color = MOODS[mood].color ?? "var(--paper)";
 const ink = mood === "neutral" || mood === "joy" ? "var(--background-color)" : "#fff";
 
+const sentAt = new Date(props.message.posted_at).toLocaleTimeString("fr-FR", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 let resend = false;
 // tl.set et pas tl.call : en lecture inverse, GSAP restaure la valeur précédente de frame.
 const timeline = gsap.timeline({
@@ -56,6 +61,8 @@ function close(andResend = false) {
           :style="{ clipPath: opened ? 'none' : frames[anim.frame] }" />
       </div>
 
+      <p v-if="opened && !passTo" class="meta">{{ sentAt }} • {{ message.user }}</p>
+
       <div v-if="opened && passTo" class="wrong-target">
         <p>
           Oups, ce message n'était pas pour toi, fais une passe à
@@ -83,6 +90,16 @@ function close(andResend = false) {
   position: absolute;
   inset: 0;
   filter: drop-shadow(0 0 1.5rem var(--color));
+}
+
+.meta {
+  position: absolute;
+  top: calc(2rem + env(safe-area-inset-top));
+  left: 2rem;
+  z-index: 1;
+  margin: 0;
+  font-family: "Montserrat", system-ui, sans-serif;
+  font-size: 0.9rem;
 }
 
 .wrong-target {
